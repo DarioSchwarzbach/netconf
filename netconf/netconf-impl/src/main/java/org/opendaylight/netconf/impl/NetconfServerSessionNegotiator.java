@@ -18,6 +18,8 @@ import java.net.SocketAddress;
 import java.util.AbstractMap;
 import java.util.Map;
 import org.opendaylight.netconf.nettyutil.AbstractNetconfSessionNegotiator;
+import org.opendaylight.protocol.framework.SessionNegotiator;
+import org.opendaylight.yangpushserver.impl.YangpushProvider;
 import org.opendaylight.netconf.api.messages.NetconfHelloMessage;
 import org.opendaylight.netconf.api.messages.NetconfHelloMessageAdditionalHeader;
 import org.opendaylight.netconf.api.NetconfDocumentedException;
@@ -32,6 +34,7 @@ public class NetconfServerSessionNegotiator
     private static final Logger LOG = LoggerFactory.getLogger(NetconfServerSessionNegotiator.class);
 
     private static final String UNKNOWN = "unknown";
+    private YangpushProvider ypProvider;
 
     protected NetconfServerSessionNegotiator(
             NetconfServerSessionPreferences sessionPreferences,
@@ -73,8 +76,10 @@ public class NetconfServerSessionNegotiator
         LOG.debug("Additional header from hello parsed as {} from {}",
                 parsedHeader, additionalHeader);
 
-        return new NetconfServerSession(sessionListener, channel,
+        NetconfServerSession serverSession = new NetconfServerSession(sessionListener, channel,
                 getSessionPreferences().getSessionId(), parsedHeader);
+        ypProvider.onSessionsUp(serverSession);
+        return serverSession;
     }
 
     /**
@@ -104,4 +109,7 @@ public class NetconfServerSessionNegotiator
 
     }
 
+	public void setYpProvider(YangpushProvider ypProvider) {
+		this.ypProvider = ypProvider;
+	}
 }

@@ -21,59 +21,62 @@ import org.opendaylight.netconf.nettyutil.AbstractChannelInitializer;
 import org.opendaylight.netconf.api.NetconfServerDispatcher;
 import org.opendaylight.netconf.impl.util.DeserializerExceptionHandler;
 import org.opendaylight.protocol.framework.AbstractDispatcher;
+import org.opendaylight.protocol.framework.SessionNegotiator;
+import org.opendaylight.yangpushserver.impl.YangpushProvider;
 
-public class NetconfServerDispatcherImpl extends AbstractDispatcher<NetconfServerSession, NetconfServerSessionListener> implements NetconfServerDispatcher {
+public class NetconfServerDispatcherImpl extends AbstractDispatcher<NetconfServerSession, NetconfServerSessionListener>
+		implements NetconfServerDispatcher {
 
-    private final ServerChannelInitializer initializer;
+	private final ServerChannelInitializer initializer;
 
-    public NetconfServerDispatcherImpl(ServerChannelInitializer serverChannelInitializer, EventLoopGroup bossGroup,
-                                       EventLoopGroup workerGroup) {
-        super(bossGroup, workerGroup);
-        this.initializer = serverChannelInitializer;
-    }
+	public NetconfServerDispatcherImpl(ServerChannelInitializer serverChannelInitializer, EventLoopGroup bossGroup,
+			EventLoopGroup workerGroup) {
+		super(bossGroup, workerGroup);
+		this.initializer = serverChannelInitializer;
+	}
 
-    @Override
-    public ChannelFuture createServer(InetSocketAddress address) {
-        return super.createServer(address, new PipelineInitializer<NetconfServerSession>() {
-            @Override
-            public void initializeChannel(final SocketChannel ch, final Promise<NetconfServerSession> promise) {
-                initializer.initialize(ch, promise);
-            }
-        });
-    }
+	@Override
+	public ChannelFuture createServer(InetSocketAddress address) {
+		return super.createServer(address, new PipelineInitializer<NetconfServerSession>() {
+			@Override
+			public void initializeChannel(final SocketChannel ch, final Promise<NetconfServerSession> promise) {
+				initializer.initialize(ch, promise);
+			}
+		});
+	}
 
-    @Override
-    public ChannelFuture createLocalServer(LocalAddress address) {
-        return super.createServer(address, LocalServerChannel.class, new ChannelPipelineInitializer<LocalChannel, NetconfServerSession>() {
-            @Override
-            public void initializeChannel(final LocalChannel ch, final Promise<NetconfServerSession> promise) {
-                initializer.initialize(ch, promise);
-            }
-        });
-    }
+	@Override
+	public ChannelFuture createLocalServer(LocalAddress address) {
+		return super.createServer(address, LocalServerChannel.class,
+				new ChannelPipelineInitializer<LocalChannel, NetconfServerSession>() {
+					@Override
+					public void initializeChannel(final LocalChannel ch, final Promise<NetconfServerSession> promise) {
+						initializer.initialize(ch, promise);
+					}
+				});
+	}
 
-    public static class ServerChannelInitializer extends AbstractChannelInitializer<NetconfServerSession> {
+	public static class ServerChannelInitializer extends AbstractChannelInitializer<NetconfServerSession> {
 
-        public static final String DESERIALIZER_EX_HANDLER_KEY = "deserializerExHandler";
+		public static final String DESERIALIZER_EX_HANDLER_KEY = "deserializerExHandler";
 
-        private final NetconfServerSessionNegotiatorFactory negotiatorFactory;
+		private final NetconfServerSessionNegotiatorFactory negotiatorFactory;
 
+		public ServerChannelInitializer(NetconfServerSessionNegotiatorFactory negotiatorFactory) {
+			this.negotiatorFactory = negotiatorFactory;
 
-        public ServerChannelInitializer(NetconfServerSessionNegotiatorFactory negotiatorFactory) {
-            this.negotiatorFactory = negotiatorFactory;
+		}
 
-        }
+		@Override
+		protected void initializeMessageDecoder(Channel ch) {
+			super.initializeMessageDecoder(ch);
+			ch.pipeline().addLast(DESERIALIZER_EX_HANDLER_KEY, new DeserializerExceptionHandler());
+		}
 
-        @Override
-        protected void initializeMessageDecoder(Channel ch) {
-            super.initializeMessageDecoder(ch);
-            ch.pipeline().addLast(DESERIALIZER_EX_HANDLER_KEY, new DeserializerExceptionHandler());
-        }
-
-        @Override
-        protected void initializeSessionNegotiator(Channel ch, Promise<NetconfServerSession> promise) {
-            ch.pipeline().addAfter(DESERIALIZER_EX_HANDLER_KEY, AbstractChannelInitializer.NETCONF_SESSION_NEGOTIATOR,
-                    negotiatorFactory.getSessionNegotiator(null, ch, promise));
-        }
-    }
+		@Override
+		protected void initializeSessionNegotiator(Channel ch, Promise<NetconfServerSession> promise) {
+			ch.pipeline().addAfter(DESERIALIZER_EX_HANDLER_KEY, AbstractChannelInitializer.NETCONF_SESSION_NEGOTIATOR,
+					negotiatorFactory.getSessionNegotiator(null, ch, promise));
+		}
+	}
 }

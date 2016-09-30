@@ -9,6 +9,9 @@ package org.opendaylight.yangpushserver.impl;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.opendaylight.controller.md.sal.dom.api.DOMDataBroker;
 import org.opendaylight.controller.md.sal.dom.api.DOMNotificationPublishService;
@@ -17,6 +20,7 @@ import org.opendaylight.controller.md.sal.dom.api.DOMRpcProviderService;
 import org.opendaylight.controller.sal.core.api.Broker.ProviderSession;
 import org.opendaylight.controller.sal.core.api.Provider;
 import org.opendaylight.netconf.api.monitoring.NetconfMonitoringService;
+import org.opendaylight.netconf.impl.NetconfServerSession;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.netconf.monitoring.rev101004.netconf.state.sessions.Session;
 import org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.NetworkTopology;
 import org.opendaylight.yangpushserver.notification.NotificationEngine;
@@ -53,14 +57,13 @@ public class YangpushProvider implements Provider, AutoCloseable, NetconfMonitor
 		NETCONF_TOPO_YID = builder.build();
 	}
 
-	private NetconfMonitoringService monitoringService;
 	private DOMDataBroker globalDomDataBroker;
 	private DOMNotificationPublishService globalDomNotificationPublisher;
 	private DOMNotificationService globalDomNotificationService;
 	private RpcImpl ypServerRpcImpl;
 	private SubscriptionEngine subEngine;
 	private NotificationEngine notificationEngine;
-
+	private Set<NetconfServerSession> serverSessions;
 	/**
 	 * Method called when the blueprint container is destroyed.
 	 */
@@ -78,6 +81,7 @@ public class YangpushProvider implements Provider, AutoCloseable, NetconfMonitor
 	@Override
 	public void onSessionInitiated(ProviderSession session) {
 		LOG.info("YangpushServerProvider is registered first marker");
+		serverSessions = new HashSet<>();
 		// get the DOM versions of MD-SAL services
 		this.globalDomDataBroker = session.getService(DOMDataBroker.class);
 
@@ -107,11 +111,6 @@ public class YangpushProvider implements Provider, AutoCloseable, NetconfMonitor
 		return Collections.emptySet();
 	}
 
-	public void setMonitoringService(NetconfMonitoringService monitoringService) {
-		this.monitoringService = monitoringService;
-		this.monitoringService.registerSessionsListener(this);
-	}
-
 	@Override
 	public void onSessionStarted(Session session) {
 		LOG.info("YangpushServerProvider {}.", session.getClass());
@@ -130,6 +129,16 @@ public class YangpushProvider implements Provider, AutoCloseable, NetconfMonitor
 	}
 
 	public void pushNotification(PeriodicNotification notification) {
-		monitoringService.getSessions().getSession().iterator().next();
+		LOG.info("Push notification");
+		for (NetconfServerSession currentSession : serverSessions) {
+			LOG.info("Push notification ZWEI");
+			currentSession.sendMessage(notification);
+			LOG.info("Pushed notification {} on session {}", notification, currentSession);
+		}
+	}
+
+	public void onSessionsUp(NetconfServerSession serverSession) {
+		LOG.info("YangpushProvider server session up: {}", serverSession);
+		serverSessions.add(serverSession);
 	}
 }

@@ -49,9 +49,9 @@ public class NetconfServerDispatcherModule extends AbstractNetconfServerDispatch
                 serverNegotiatorFactory);
 
         final YangpushProvider provider = new YangpushProvider();
-        provider.setMonitoringService(monitoringService);
         getDomBrokerDependency().registerProvider(provider);
-
+        serverNegotiatorFactory.setYpProvider(provider);
+        
         return new NetconfServerDispatcherImpl(serverChannelInitializer, getBossThreadGroupDependency(), getWorkerThreadGroupDependency()) {
 
             @Override
@@ -59,7 +59,6 @@ public class NetconfServerDispatcherModule extends AbstractNetconfServerDispatch
                 // NOOP, close should not be present here, the deprecated method closes injected evet loop groups
             }
         };
-
     }
 
     private AggregatedNetconfOperationServiceFactory getAggregatedOpProvider() {

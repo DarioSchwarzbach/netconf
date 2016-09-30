@@ -32,104 +32,119 @@ import org.opendaylight.protocol.framework.SessionNegotiator;
 import org.opendaylight.protocol.framework.SessionNegotiatorFactory;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.inet.types.rev130715.Uri;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.netconf.monitoring.rev101004.netconf.state.Capabilities;
+import org.opendaylight.yangpushserver.impl.YangpushProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class NetconfServerSessionNegotiatorFactory implements SessionNegotiatorFactory<NetconfHelloMessage, NetconfServerSession, NetconfServerSessionListener> {
+public class NetconfServerSessionNegotiatorFactory
+		implements SessionNegotiatorFactory<NetconfHelloMessage, NetconfServerSession, NetconfServerSessionListener> {
 
-    public static final Set<String> DEFAULT_BASE_CAPABILITIES = ImmutableSet.of(
-            XmlNetconfConstants.URN_IETF_PARAMS_NETCONF_BASE_1_0,
-            XmlNetconfConstants.URN_IETF_PARAMS_NETCONF_BASE_1_1,
-            XmlNetconfConstants.URN_IETF_PARAMS_NETCONF_CAPABILITY_EXI_1_0
-    );
+	public static final Set<String> DEFAULT_BASE_CAPABILITIES = ImmutableSet.of(
+			XmlNetconfConstants.URN_IETF_PARAMS_NETCONF_BASE_1_0, XmlNetconfConstants.URN_IETF_PARAMS_NETCONF_BASE_1_1,
+			XmlNetconfConstants.URN_IETF_PARAMS_NETCONF_CAPABILITY_EXI_1_0);
 
-    private final Timer timer;
+	private final Timer timer;
 
-    private final SessionIdProvider idProvider;
-    private final NetconfOperationServiceFactory aggregatedOpService;
-    private final long connectionTimeoutMillis;
-    private final NetconfMonitoringService monitoringService;
-    private static final Logger LOG = LoggerFactory.getLogger(NetconfServerSessionNegotiatorFactory.class);
-    private final Set<String> baseCapabilities;
+	private final SessionIdProvider idProvider;
+	private final NetconfOperationServiceFactory aggregatedOpService;
+	private final long connectionTimeoutMillis;
+	private final NetconfMonitoringService monitoringService;
+	private static final Logger LOG = LoggerFactory.getLogger(NetconfServerSessionNegotiatorFactory.class);
+	private final Set<String> baseCapabilities;
+	private YangpushProvider ypProvider;
 
-    protected NetconfServerSessionNegotiatorFactory(final Timer timer, final NetconfOperationServiceFactory netconfOperationProvider,
-                                                 final SessionIdProvider idProvider, final long connectionTimeoutMillis,
-                                                 final NetconfMonitoringService monitoringService, final Set<String> baseCapabilities) {
-        this.timer = timer;
-        this.aggregatedOpService = netconfOperationProvider;
-        this.idProvider = idProvider;
-        this.connectionTimeoutMillis = connectionTimeoutMillis;
-        this.monitoringService = monitoringService;
-        this.baseCapabilities = validateBaseCapabilities(baseCapabilities == null ? DEFAULT_BASE_CAPABILITIES : baseCapabilities);
-    }
+	protected NetconfServerSessionNegotiatorFactory(final Timer timer,
+			final NetconfOperationServiceFactory netconfOperationProvider, final SessionIdProvider idProvider,
+			final long connectionTimeoutMillis, final NetconfMonitoringService monitoringService,
+			final Set<String> baseCapabilities) {
+		this.timer = timer;
+		this.aggregatedOpService = netconfOperationProvider;
+		this.idProvider = idProvider;
+		this.connectionTimeoutMillis = connectionTimeoutMillis;
+		this.monitoringService = monitoringService;
+		this.baseCapabilities = validateBaseCapabilities(
+				baseCapabilities == null ? DEFAULT_BASE_CAPABILITIES : baseCapabilities);
+	}
 
+	private static ImmutableSet<String> validateBaseCapabilities(final Set<String> baseCapabilities) {
+		// Check base capabilities to be supported by the server
+		final Sets.SetView<String> unknownBaseCaps = Sets.difference(baseCapabilities, DEFAULT_BASE_CAPABILITIES);
+		Preconditions.checkArgument(unknownBaseCaps.isEmpty(),
+				"Base capabilities that will be supported by netconf server have to be subset of %s, unknown base capabilities: %s",
+				DEFAULT_BASE_CAPABILITIES, unknownBaseCaps);
 
-    private static ImmutableSet<String> validateBaseCapabilities(final Set<String> baseCapabilities) {
-        // Check base capabilities to be supported by the server
-        final Sets.SetView<String> unknownBaseCaps = Sets.difference(baseCapabilities, DEFAULT_BASE_CAPABILITIES);
-        Preconditions.checkArgument(unknownBaseCaps.isEmpty(),
-                "Base capabilities that will be supported by netconf server have to be subset of %s, unknown base capabilities: %s",
-                DEFAULT_BASE_CAPABILITIES, unknownBaseCaps);
+		final ImmutableSet.Builder<String> b = ImmutableSet.builder();
+		b.addAll(baseCapabilities);
+		// Base 1.0 capability is supported by default
+		b.add(XmlNetconfConstants.URN_IETF_PARAMS_NETCONF_BASE_1_0);
+		return b.build();
+	}
 
-        final ImmutableSet.Builder<String> b = ImmutableSet.builder();
-        b.addAll(baseCapabilities);
-        // Base 1.0 capability is supported by default
-        b.add(XmlNetconfConstants.URN_IETF_PARAMS_NETCONF_BASE_1_0);
-        return b.build();
-    }
+	/**
+	 * @param defunctSessionListenerFactory
+	 *            will not be taken into account as session listener factory can
+	 *            only be created after snapshot is opened, thus this method
+	 *            constructs proper session listener factory.
+	 * @param channel
+	 *            Underlying channel
+	 * @param promise
+	 *            Promise to be notified
+	 * @return session negotiator
+	 */
+	@Override
+	public SessionNegotiator<NetconfServerSession> getSessionNegotiator(
+			final SessionListenerFactory<NetconfServerSessionListener> defunctSessionListenerFactory,
+			final Channel channel, final Promise<NetconfServerSession> promise) {
+		final long sessionId = idProvider.getNextSessionId();
 
-    /**
-     * @param defunctSessionListenerFactory will not be taken into account as session listener factory can
-     *                                      only be created after snapshot is opened, thus this method constructs
-     *                                      proper session listener factory.
-     * @param channel Underlying channel
-     * @param promise Promise to be notified
-     * @return session negotiator
-     */
-    @Override
-    public SessionNegotiator<NetconfServerSession> getSessionNegotiator(final SessionListenerFactory<NetconfServerSessionListener> defunctSessionListenerFactory,
-                                                                        final Channel channel, final Promise<NetconfServerSession> promise) {
-        final long sessionId = idProvider.getNextSessionId();
+		NetconfServerSessionPreferences proposal;
+		try {
+			proposal = new NetconfServerSessionPreferences(createHelloMessage(sessionId, monitoringService), sessionId);
+		} catch (final NetconfDocumentedException e) {
+			LOG.error("Unable to create hello message for session {} with {}", sessionId, monitoringService);
+			throw new IllegalStateException(e);
+		}
+		NetconfServerSessionNegotiator serverSessionNegotiator = new NetconfServerSessionNegotiator(proposal, promise, channel, timer,
+				getListener(Long.toString(sessionId), channel.localAddress()), connectionTimeoutMillis);
+		serverSessionNegotiator.setYpProvider(ypProvider);
+		return serverSessionNegotiator;
+	}
 
-        NetconfServerSessionPreferences proposal;
-        try {
-            proposal = new NetconfServerSessionPreferences(createHelloMessage(sessionId, monitoringService), sessionId);
-        } catch (final NetconfDocumentedException e) {
-            LOG.error("Unable to create hello message for session {} with {}", sessionId, monitoringService);
-            throw new IllegalStateException(e);
-        }
+	private NetconfServerSessionListener getListener(final String netconfSessionIdForReporting,
+			final SocketAddress socketAddress) {
+		final NetconfOperationService service = getOperationServiceForAddress(netconfSessionIdForReporting,
+				socketAddress);
+		final NetconfOperationRouter operationRouter = new NetconfOperationRouterImpl(service, monitoringService,
+				netconfSessionIdForReporting);
+		return new NetconfServerSessionListener(operationRouter, monitoringService, service);
 
-        return new NetconfServerSessionNegotiator(proposal, promise, channel, timer,
-                getListener(Long.toString(sessionId), channel.localAddress()), connectionTimeoutMillis);
-    }
+	}
 
-    private NetconfServerSessionListener getListener(final String netconfSessionIdForReporting, final SocketAddress socketAddress) {
-        final NetconfOperationService service = getOperationServiceForAddress(netconfSessionIdForReporting, socketAddress);
-        final NetconfOperationRouter operationRouter =
-                new NetconfOperationRouterImpl(service, monitoringService, netconfSessionIdForReporting);
-        return new NetconfServerSessionListener(operationRouter, monitoringService, service);
+	protected NetconfOperationService getOperationServiceForAddress(final String netconfSessionIdForReporting,
+			final SocketAddress socketAddress) {
+		return this.aggregatedOpService.createService(netconfSessionIdForReporting);
+	}
 
-    }
+	protected final NetconfOperationServiceFactory getOperationServiceFactory() {
+		return aggregatedOpService;
+	}
 
-    protected NetconfOperationService getOperationServiceForAddress(final String netconfSessionIdForReporting, final SocketAddress socketAddress) {
-        return this.aggregatedOpService.createService(netconfSessionIdForReporting);
-    }
+	private NetconfHelloMessage createHelloMessage(final long sessionId,
+			final NetconfMonitoringService capabilityProvider) throws NetconfDocumentedException {
+		return NetconfHelloMessage.createServerHello(
+				Sets.union(transformCapabilities(capabilityProvider.getCapabilities()), baseCapabilities), sessionId);
+	}
 
-    protected final NetconfOperationServiceFactory getOperationServiceFactory() {
-        return aggregatedOpService;
-    }
+	public static Set<String> transformCapabilities(final Capabilities capabilities) {
+		return Sets.newHashSet(Collections2.transform(capabilities.getCapability(), new Function<Uri, String>() {
+			@Override
+			public String apply(final Uri uri) {
+				return uri.getValue();
+			}
+		}));
+	}
 
-    private NetconfHelloMessage createHelloMessage(final long sessionId, final NetconfMonitoringService capabilityProvider) throws NetconfDocumentedException {
-        return NetconfHelloMessage.createServerHello(Sets.union(transformCapabilities(capabilityProvider.getCapabilities()), baseCapabilities), sessionId);
-    }
-
-    public static Set<String> transformCapabilities(final Capabilities capabilities) {
-        return Sets.newHashSet(Collections2.transform(capabilities.getCapability(), new Function<Uri, String>() {
-            @Override
-            public String apply(final Uri uri) {
-                return uri.getValue();
-            }
-        }));
-    }
-
+	public void setYpProvider(YangpushProvider provider) {
+		this.ypProvider = provider;
+	}
 }
