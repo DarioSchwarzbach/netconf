@@ -7,7 +7,10 @@
  */
 package org.opendaylight.yangpushserver.subscription;
 
+import javax.xml.transform.dom.DOMSource;
+
 import org.opendaylight.yangpushserver.rpc.Errors;
+import org.opendaylight.yangpushserver.subscription.SubscriptionInfo.SubscriptionStreamStatus;
 
 public final class SubscriptionInfo {
 	// TODO Instead of just String types, ensure the formats fit!
@@ -22,7 +25,7 @@ public final class SubscriptionInfo {
 			subscriptionId;
 	Long period, dampeningPeriod;
 	private Errors.errors error;
-	private String filter;
+	private DOMSource filter;
 	private Boolean noSynchOnStart;
 	public SubscriptionStreamStatus subscriptionStreamStatus;
 	private static SubscriptionInfo instance = null;
@@ -147,11 +150,11 @@ public final class SubscriptionInfo {
 		this.subscriptionId = subscriptionId;
 	}
 
-	public String getFilter() {
+	public DOMSource getFilter() {
 		return filter;
 	}
 
-	public void setFilter(String filter) {
+	public void setFilter(DOMSource filter) {
 		this.filter = filter;
 	}
 

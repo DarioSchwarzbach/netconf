@@ -7,6 +7,8 @@
  */
 package org.opendaylight.yangpushserver.rpc;
 
+import java.text.DateFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashSet;
@@ -29,6 +31,7 @@ import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notif
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.establish.subscription.input.filter.type.UpdateFilter;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.update.filter.update.filter.Subtree;
 import org.opendaylight.yangpushserver.notification.NotificationEngine;
+import org.opendaylight.yangpushserver.notification.PeriodicNotification;
 import org.opendaylight.yangpushserver.rpc.Errors.errors;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine.operations;
@@ -68,6 +71,8 @@ public class RpcImpl implements DOMRpcImplementation {
 	public static final String NOTIF_BIS = "urn:ietf:params:xml:ns:yang:ietf-event-notifications";
 	public static final String NOTIF_BIS_DATE = "2016-06-15";
 
+	public static final String YANG_DATEANDTIME_FORMAT_BLUEPRINT = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'";
+
 	// QNames used to construct augment leafs present in
 	// ietf-event-notifications.yang
 	public static final QName N_ENCODING_NAME = QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "encoding");
@@ -78,14 +83,17 @@ public class RpcImpl implements DOMRpcImplementation {
 	public static final QName N_FILTER_TYPE_NAME = QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "filter-type");
 	public static final QName N_UPDATE_TRIGGER_NAME = QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "update-trigger");
 	public static final QName N_DSCP_NAME = QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "dscp");
-	public static final QName N_SUB_ID_NAME = QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "subsciption-id");
-	public static final QName N_SUB_PRIORITY_NAME = QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "subscription-priority");
-	public static final QName N_SUB_DEPENDENCY_NAME = QName.create(NOTIF_BIS, NOTIF_BIS_DATE,
-			"subscription-dependency");
+	public static final QName N_SUB_ID_NAME = QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "subscription-id");
+	public static final QName N_SUBTREE_FILTER_TYPE_NAME = QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "filter-type");
+	public static final QName N_SUBTREE_FILTER_NAME = QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "filter");
+
+	// public static final QName N_SUB_PRIORITY_NAME = QName.create(NOTIF_BIS,
+	// NOTIF_BIS_DATE, "subscription-priority");
+	// public static final QName N_SUB_DEPENDENCY_NAME = QName.create(NOTIF_BIS,
+	// NOTIF_BIS_DATE,
+	// "subscription-dependency");
+	public static final QName N_RESULT_NAME = QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "result");
 	public static final QName N_SUB_RESULT_NAME = QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "subscription-result");
-	public static final QName N_SUB_START_TIME_NAME = QName.create(NOTIF_BIS, NOTIF_BIS_DATE,
-			"subscription-start-time");
-	public static final QName N_SUB_STOP_TIME_NAME = QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "subscription-stop-time");
 
 	// QNames used to construct augment leafs present in
 	// ietf-yang-push
@@ -93,16 +101,23 @@ public class RpcImpl implements DOMRpcImplementation {
 	public static final QName Y_PERIOD_NAME = QName.create(YP_NS, YP_NS_DATE, "period");
 	public static final QName Y_UPDATE_TRIGGER_NAME = QName.create(YP_NS, YP_NS_DATE, "update-trigger");
 	public static final QName Y_DSCP_NAME = QName.create(YP_NS, YP_NS_DATE, "dscp");
+	public static final QName Y_SUB_START_TIME_NAME = QName.create(YP_NS, YP_NS_DATE, "subscription-start-time");
+	public static final QName Y_SUB_STOP_TIME_NAME = QName.create(YP_NS, YP_NS_DATE, "subscription-stop-time");
+	public static final QName Y_SUB_DEPENDENCY_NAME = QName.create(YP_NS, YP_NS_DATE, "subscription-dependency");
+	public static final QName Y_SUB_PRIORITY_NAME = QName.create(YP_NS, YP_NS_DATE, "subscription-priority");
+	public static final QName Y_PUSH_SUBTREE_FILTERSPEC = QName.create(YP_NS, YP_NS_DATE, "filterspec");
+	public static final QName Y_PUSH_SUBTREE_FILTER_TYPE = QName.create(YP_NS, YP_NS_DATE, "filter-type");
+	public static final QName Y_PUSH_SUBTREE_FILTER = QName.create(YP_NS, YP_NS_DATE, "subtree-filter");
 
 	// QNames used to construct establish RPC input & output present in
 	// ietf-event-notifications.yang
 	public static final NodeIdentifier N_ESTABLISH_SUB_OUTPUT = NodeIdentifier
 			.create(EstablishSubscriptionOutput.QNAME);
+	public static final QName N_ES_OUTPUT_RESULT = QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "result");
 	public static final NodeIdentifier N_ESTABLISH_SUB_INPUT = NodeIdentifier.create(EstablishSubscriptionInput.QNAME);
 
 	// QNames used to construct establish filter present in
 	// ietf-event-notifications.yang
-	public static final NodeIdentifier N_FILTER_TYPE = NodeIdentifier.create(FilterType.QNAME);
 	public static final NodeIdentifier N_UPDATE_FILTER = NodeIdentifier.create(UpdateFilter.QNAME);
 	public static final NodeIdentifier N_SUBTREE = NodeIdentifier.create(Subtree.QNAME);
 	// public static final QName N_FILTER_TYPE_NAME = QName.create(NOTIF_BIS,
@@ -123,7 +138,6 @@ public class RpcImpl implements DOMRpcImplementation {
 			.create(SchemaPath.create(true, QName.create(ModifySubscriptionInput.QNAME, "modify-subscription")));
 	public static final DOMRpcIdentifier DELETE_SUBSCRIPTION_RPC = DOMRpcIdentifier
 			.create(SchemaPath.create(true, QName.create(DeleteSubscriptionInput.QNAME, "delete-subscription")));
-
 
 	// TODO REMOVE Test_Sub!
 	public static final String RFC3339_DATE_FORMAT_BLUEPRINT = "yyyy-MM-dd'T'HH:mm:ss'Z'";
@@ -151,7 +165,7 @@ public class RpcImpl implements DOMRpcImplementation {
 	 */
 	private void registerRPCs() {
 		// Register RPC to DOMRpcProviderService, LOGs proofed this.
-		// TODO REMOVE Test_Sub! GET_SUBSCRIPTION_RPC, Test_Sub,
+		// +
 		service.registerRpcImplementation(this, ESTABLISH_SUBSCRIPTION_RPC, MODIFY_SUBSCRIPTION_RPC,
 				DELETE_SUBSCRIPTION_RPC);
 	}
@@ -164,7 +178,7 @@ public class RpcImpl implements DOMRpcImplementation {
 	public CheckedFuture<DOMRpcResult, DOMRpcException> invokeRpc(DOMRpcIdentifier rpc, NormalizedNode<?, ?> input) {
 		LOG.info("sub-RPC invoked");
 		if (rpc.equals(ESTABLISH_SUBSCRIPTION_RPC)) {
-			LOG.debug("This is a establish subscription RPC");
+			LOG.info("This is a establish subscription RPC");
 			return establishSubscriptionRpcHandler(input);
 		} else if (rpc.equals(MODIFY_SUBSCRIPTION_RPC)) {
 			LOG.info("This is a modify subscrition RPC. Not supported yet...");
@@ -172,9 +186,9 @@ public class RpcImpl implements DOMRpcImplementation {
 		} else if (rpc.equals(DELETE_SUBSCRIPTION_RPC)) {
 			LOG.info("This is a delete subscrition RPC");
 			return deleteSubscriptionRpcHandler(input);
-//		} else if (rpc.equals(GET_SUBSCRIPTION_RPC)) {
-//			LOG.info("This is a get subscrition RPC");
-//			return getSubscriptionRpcHandler(input);
+			// } else if (rpc.equals(GET_SUBSCRIPTION_RPC)) {
+			// LOG.info("This is a get subscrition RPC");
+			// return getSubscriptionRpcHandler(input);
 		}
 		LOG.info("Unknown RPC...");
 		return Futures.immediateCheckedFuture((DOMRpcResult) new DefaultDOMRpcResult());
@@ -200,8 +214,9 @@ public class RpcImpl implements DOMRpcImplementation {
 				.withChild(ImmutableNodes.leafNode(N_STREAM_NAME, "push-update"))
 				.withChild(ImmutableNodes.leafNode(N_START_TIME_NAME, ""))
 				.withChild(ImmutableNodes.leafNode(N_STOP_TIME_NAME, ""))
-				.withChild(ImmutableNodes.leafNode(N_UPDATE_TRIGGER_NAME, "periodic"))
-				.withChild(ImmutableNodes.leafNode(N_FILTER_TYPE, N_UPDATE_FILTER_NAME)).build();
+				.withChild(ImmutableNodes.leafNode(N_UPDATE_TRIGGER_NAME, "periodic")).build();
+		// .withChild(ImmutableNodes.leafNode(N_SUBTREE_FILTER_NAME,
+		// N_UPDATE_FILTER_NAME)).build();
 		return cn;
 	}
 
@@ -226,8 +241,8 @@ public class RpcImpl implements DOMRpcImplementation {
 		// parsing should have been 'ok'
 		LOG.trace(inputData.toString());
 		LOG.info("Parsing complete");
-		if(subscriptionEngine.checkIfSubscriptionExists(inputData.getSubscriptionId())){
-		subscriptionEngine.updateMdSal(subscriptionInfo, operations.delete);	
+		if (subscriptionEngine.checkIfSubscriptionExists(inputData.getSubscriptionId())) {
+			subscriptionEngine.updateMdSal(subscriptionInfo, operations.delete);
 		}
 
 		// Because it's deleteSubscription, there will be no RPC output.
@@ -374,12 +389,12 @@ public class RpcImpl implements DOMRpcImplementation {
 		// sent
 		if (inputData.getDampeningPeriod() != null) {
 			LOG.info("Register on-Change-Notifications");
-			notificationEngine.registerOnChangeNotification(inputData.getSubscriptionId());
-			
+			// notificationEngine.registerOnChangeNotification(inputData.getSubscriptionId());
+
 		} else if (inputData.getPeriod() != null) {
 			LOG.info("Register periodic-Notifications");
-			notificationEngine.registerPeriodicNotification(inputData.getSubscriptionId());
-			
+			// notificationEngine.registerPeriodicNotification(inputData.getSubscriptionId());
+
 		} else {
 			LOG.error("Wrong Subscription exists, neither on-Change nor periodic Subscription");
 			return null;
@@ -395,11 +410,48 @@ public class RpcImpl implements DOMRpcImplementation {
 	 * @return containerNode for Create Subscription Output
 	 */
 	private ContainerNode createEstablishSubOutput(String sid) {
-		if (sid.equals("-1")){
-		final ContainerNode cn = Builders.containerBuilder().withNodeIdentifier(N_ESTABLISH_SUB_OUTPUT)
-				.withChild(ImmutableNodes.leafNode(N_SUB_RESULT_NAME, "ok"))
-				.withChild(ImmutableNodes.leafNode(N_SUB_ID_NAME, sid)).build();
-		return cn;
+		SubscriptionInfo subscriptionInfo = subscriptionEngine.getSubscription(sid);
+
+		NodeIdentifier result = new NodeIdentifier(N_RESULT_NAME);
+		NodeIdentifier subid = new NodeIdentifier(N_SUB_ID_NAME);
+		NodeIdentifier updateTrigger = new NodeIdentifier(Y_UPDATE_TRIGGER_NAME);
+		NodeIdentifier period = new NodeIdentifier(Y_PERIOD_NAME);
+		NodeIdentifier dampeningPeriod = new NodeIdentifier(Y_DAMPENING_PERIOD_NAME);
+
+		Long sidValue = Long.valueOf(sid);
+		Short subPriorityValue = Short.valueOf(subscriptionInfo.getSubscriptionPriority());
+		Short dscpValue = Short.valueOf(subscriptionInfo.getDscp());
+		ChoiceNode c1 = Builders.choiceBuilder().withNodeIdentifier(result)
+				.withChild(ImmutableNodes.leafNode(subid, sidValue)).build();
+		ChoiceNode c2 = null;
+
+		// Whether its periodic or on-Change the node must be built differently
+		if (!subscriptionInfo.getPeriod().equals(null)) {
+			LOG.info("Period" + subscriptionInfo.getPeriod().toString());
+			c2 = Builders.choiceBuilder().withNodeIdentifier(updateTrigger)
+					.withChild(ImmutableNodes.leafNode(period, subscriptionInfo.getPeriod())).build();
+		} else {
+			LOG.info("DP" + subscriptionInfo.getDampeningPeriod().toString());
+			c2 = Builders.choiceBuilder().withNodeIdentifier(updateTrigger)
+					.withChild(ImmutableNodes.leafNode(dampeningPeriod, subscriptionInfo.getDampeningPeriod())).build();
+		}
+		// ContainerNode subResult =
+		// Builders.containerBuilder().withNodeIdentifier(NodeIdentifier.create(Y_SUB_RESULT_NAME)).build();
+
+		if (!sid.equals("-1")) {
+			final ContainerNode cn = Builders.containerBuilder().withNodeIdentifier(N_ESTABLISH_SUB_OUTPUT)
+					.withChild(ImmutableNodes.leafNode(N_SUB_RESULT_NAME, "ok")).withChild(c2).withChild(c1)
+					.withChild(ImmutableNodes.leafNode(Y_DSCP_NAME, dscpValue))
+					.withChild(ImmutableNodes.leafNode(Y_SUB_PRIORITY_NAME, subPriorityValue))
+					.withChild(ImmutableNodes.leafNode(Y_SUB_DEPENDENCY_NAME,
+							subscriptionInfo.getSubscriptionDependency()))
+					.withChild(
+							ImmutableNodes.leafNode(Y_SUB_STOP_TIME_NAME, subscriptionInfo.getSubscriptionStopTime()))
+					.withChild(
+							ImmutableNodes.leafNode(Y_SUB_START_TIME_NAME, subscriptionInfo.getSubscriptionStartTime()))
+					.build();
+			LOG.info("output node: " + cn);
+			return cn;
 		}
 		return null;
 	}
@@ -422,7 +474,7 @@ public class RpcImpl implements DOMRpcImplementation {
 				conNode = (ContainerNode) input;
 				Set<QName> childNames = new HashSet<>();
 				AugmentationNode an = (AugmentationNode) conNode.getValue().iterator().next();
-				
+				LOG.info("Whole node: " + conNode);
 				// Whole example node
 
 				// ImmutableContainerNode{nodeIdentifier=(urn:ietf:params:xml:ns:yang:ietf-event-notifications?revision=2016-06-15)input,
@@ -457,7 +509,7 @@ public class RpcImpl implements DOMRpcImplementation {
 				} else {
 					esri.setEncoding("encode-xml");
 				}
-				LOG.info("Parsing encode complete : "+esri.getEncoding());
+				LOG.info("Parsing encode complete : " + esri.getEncoding());
 				// II Parse stream - NO AUGMENTATION
 				DataContainerChild<? extends PathArgument, ?> streamNode = null;
 				NodeIdentifier stream = new NodeIdentifier(N_STREAM_NAME);
@@ -472,61 +524,64 @@ public class RpcImpl implements DOMRpcImplementation {
 				} else {
 					esri.setStream("NETCONF");
 				}
-				LOG.info("Parsing stream complete : "+esri.getStream());
+				LOG.info("Parsing stream complete : " + esri.getStream());
 				// III Parse sub-start-time
 				DataContainerChild<? extends PathArgument, ?> subStartTimeNode = null;
-				NodeIdentifier subStartTime = new NodeIdentifier(N_SUB_START_TIME_NAME);
+				NodeIdentifier subStartTime = new NodeIdentifier(Y_SUB_START_TIME_NAME);
 				t = an.getChild(subStartTime);
 				if (t.isPresent()) {
 					subStartTimeNode = (LeafNode<?>) t.get();
-					if (subStartTimeNode.getValue() != null) {
-						esri.setSubscriptionStarTime(subStartTimeNode.getValue().toString());
+					if (subStartTimeNode.getValue().equals(null)) {
+						if (!subStartTimeIsBeforeSystemTime(subStartTimeNode.getValue().toString())) {
+							esri.setSubscriptionStarTime(subStartTimeNode.getValue().toString());
+						} else {
+							esri.setSubscriptionStarTime("-1");
+						}
 					} else {
-						esri.setSubscriptionStarTime("-1");
+						esri.setSubscriptionStarTime(
+								new SimpleDateFormat(YANG_DATEANDTIME_FORMAT_BLUEPRINT).format(new Date()));
 					}
 				} else {
-//					esri.setSubscriptionStarTime(
-//							new SimpleDateFormat(RFC3339_DATE_FORMAT_BLUEPRINT).format(new Date()));
-					esri.setSubscriptionStarTime("-1");
+					esri.setSubscriptionStarTime(new SimpleDateFormat(YANG_DATEANDTIME_FORMAT_BLUEPRINT).format(new Date()));
 				}
-				LOG.info("Parsing sub-start-time complete : "+esri.getSubscriptionStartTime());
+				LOG.info("Parsing sub-start-time complete : " + esri.getSubscriptionStartTime());
 				// IV Parse sub-stop-time
 				DataContainerChild<? extends PathArgument, ?> subStopTimeNode = null;
-				NodeIdentifier subStopTime = new NodeIdentifier(N_SUB_STOP_TIME_NAME);
+				NodeIdentifier subStopTime = new NodeIdentifier(Y_SUB_STOP_TIME_NAME);
 				t = an.getChild(subStopTime);
 				if (t.isPresent()) {
 					subStopTimeNode = (LeafNode<?>) t.get();
-					if (subStopTimeNode.getValue() != null) {
+					if (subStopTimeNode.getValue().equals(null)) {
 						esri.setSubscriptionStopTime(subStopTimeNode.getValue().toString());
 					} else {
-						esri.setSubscriptionStopTime("-1");
+						esri.setSubscriptionStopTime(null);
 					}
 				} else {
-					esri.setSubscriptionStopTime("-1");
+					esri.setSubscriptionStopTime(null);
 				}
-				LOG.info("Parsing sub-stop-time complete : "+esri.getSubscriptionStopTime());
+				LOG.info("Parsing sub-stop-time complete : " + esri.getSubscriptionStopTime());
 				// V Parse start-time
 				DataContainerChild<? extends PathArgument, ?> startTimeNode = null;
 				NodeIdentifier startTime = new NodeIdentifier(N_START_TIME_NAME);
 				t = an.getChild(startTime);
 				if (t.isPresent()) {
 					startTimeNode = (LeafNode<?>) t.get();
-					if (startTimeNode.getValue() != null) {
+					if (startTimeNode.getValue().equals(null)) {
 						esri.setStartTime(startTimeNode.getValue().toString());
 					} else {
-						esri.setSubscriptionStarTime("-1");
+						esri.setStartTime("-1");
 					}
 				} else {
-					esri.setSubscriptionStarTime("-1");
+					esri.setStartTime("-1");
 				}
-				LOG.info("Parsing start-time complete : "+esri.getStartTime());
+				LOG.info("Parsing start-time complete : " + esri.getStartTime());
 				// VI Parse stop-time
 				DataContainerChild<? extends PathArgument, ?> stopTimeNode = null;
 				NodeIdentifier stopTime = new NodeIdentifier(N_STOP_TIME_NAME);
 				t = an.getChild(stopTime);
 				if (t.isPresent()) {
 					stopTimeNode = (LeafNode<?>) t.get();
-					if (stopTimeNode.getValue() != null) {
+					if (stopTimeNode.getValue().equals(null)) {
 						esri.setStopTime(stopTimeNode.getValue().toString());
 					} else {
 						esri.setStopTime("-1");
@@ -534,26 +589,11 @@ public class RpcImpl implements DOMRpcImplementation {
 				} else {
 					esri.setStopTime("-1");
 				}
-
-				LOG.info("Parsing stop-time complete : "+esri.getStopTime());
+				LOG.info("Parsing stop-time complete : " + esri.getStopTime());
 				// VII Parsing update-trigger
-
 				NodeIdentifier updateTrigger = new NodeIdentifier(Y_UPDATE_TRIGGER_NAME);
 				NodeIdentifier period = new NodeIdentifier(Y_PERIOD_NAME);
 				NodeIdentifier dampeningPeriod = new NodeIdentifier(Y_DAMPENING_PERIOD_NAME);
-				// ChoiceNode cn = (ChoiceNode) an.getValue().iterator().next();
-				// LOG.info("cn "+cn);
-				// LeafNode per = (LeafNode) cn.getValue().iterator().next();
-				// LOG.info("per "+per);
-
-				// Set<QName> childTest = new HashSet<>();
-				// childTest.add(Y_UPDATE_TRIGGER_NAME);
-				// AugmentationIdentifier ai = new
-				// AugmentationIdentifier(childTest);
-				// LOG.info("Augment Ident " + ai);
-				// Augment Ident
-				// AugmentationIdentifier{childNames=[(urn:ietf:params:xml:ns:yang:ietf-yang-push?revision=2016-06-15)update-trigger]}
-
 				ChoiceNode c1 = (ChoiceNode) an.getChild(updateTrigger).get();
 				if (c1.getChild(period).isPresent()) {
 					DataContainerChild<? extends PathArgument, ?> c2 = c1.getChild(period).get();
@@ -576,15 +616,15 @@ public class RpcImpl implements DOMRpcImplementation {
 					esri = null;
 					return esri;
 				}
-
-				LOG.info("Parsing update-trigger complete "+"P: "+esri.getPeriod()+" DP: "+esri.getDampeningPeriod());
-				// VIII Parsing dscp FUNKTIONIERT
+				LOG.info("Parsing update-trigger complete " + "P: " + esri.getPeriod() + " DP: "
+						+ esri.getDampeningPeriod());
+				// VIII Parsing dscp
 				DataContainerChild<? extends PathArgument, ?> dscpNode = null;
 				NodeIdentifier dscp = new NodeIdentifier(Y_DSCP_NAME);
 				t = an.getChild(dscp);
 				if (t.isPresent()) {
 					dscpNode = (LeafNode<?>) t.get();
-					if (dscpNode.getValue() != null) {
+					if (dscpNode.getValue().equals(null)) {
 						esri.setDscp(String.valueOf(dscpNode.getValue()));
 					} else {
 						esri.setDscp("0");
@@ -592,68 +632,56 @@ public class RpcImpl implements DOMRpcImplementation {
 				} else {
 					esri.setDscp("0");
 				}
-				LOG.info("Parsing dscp complete : "+esri.getDscp());
+				LOG.info("Parsing dscp complete : " + esri.getDscp());
 				// IX Parsing sub-priority
 				DataContainerChild<? extends PathArgument, ?> subPriorityNode = null;
-				NodeIdentifier subPriority = new NodeIdentifier(N_SUB_PRIORITY_NAME);
+				NodeIdentifier subPriority = new NodeIdentifier(Y_SUB_PRIORITY_NAME);
 				t = an.getChild(subPriority);
 				if (t.isPresent()) {
 					subPriorityNode = (LeafNode<?>) t.get();
-					if (subPriorityNode.getValue() != null) {
-						esri.setSubscriptionPriority((String) subPriorityNode.getValue());
+					if (subPriorityNode.getValue().equals(null)) {
+						esri.setSubscriptionPriority(String.valueOf(subPriorityNode.getValue()));
 					} else {
-						esri.setSubscriptionPriority("");
+						esri.setSubscriptionPriority("0");
 					}
 				} else {
-					esri.setSubscriptionPriority("");
+					esri.setSubscriptionPriority("0");
 				}
-				LOG.info("Parsing sub-priority complete : "+esri.getSubscriptionPriority());
+				LOG.info("Parsing sub-priority complete : " + esri.getSubscriptionPriority());
 				// IX Parsing sub-dependency
 				DataContainerChild<? extends PathArgument, ?> subDependencyNode = null;
-				NodeIdentifier subDependency = new NodeIdentifier(N_SUB_DEPENDENCY_NAME);
+				NodeIdentifier subDependency = new NodeIdentifier(Y_SUB_DEPENDENCY_NAME);
 				t = an.getChild(subDependency);
 				if (t.isPresent()) {
 					subDependencyNode = (LeafNode<?>) t.get();
-					if (subDependencyNode.getValue() != null) {
+					if (subDependencyNode.getValue().equals(null)) {
 						esri.setSubscriptionDependency((String) subDependencyNode.getValue());
 					} else {
-						esri.setSubscriptionDependency("");
+						esri.setSubscriptionDependency("0");
 					}
 				} else {
-					esri.setSubscriptionDependency("");
+					esri.setSubscriptionDependency("0");
 				}
-				LOG.info("Parsing sub-dependency complete : "+esri.getSubscriptionDependency());
-				// TODO Need to be checked!
+				LOG.info("Parsing sub-dependency complete : " + esri.getSubscriptionDependency());
+				// TODO Subtree namespaces, but xpath formatting
 				// XI Parse filter-type
-				// NodeIdentifier filterspec = new
-				// NodeIdentifier(I_PUSH_SUBTREE_FILTERSPEC);
-				// NodeIdentifier filtertype = new
-				// NodeIdentifier(I_PUSH_SUBTREE_FILTER_TYPE);
-				// NodeIdentifier subtreeFilter = new
-				// NodeIdentifier(I_PUSH_SUBTREE_FILTER);
-				// System.out.println("test1");
-				// DataContainerChild<? extends PathArgument, ?> i =
-				// conNode.getChild(filterspec).get();
-				// ChoiceNode t1 = (ChoiceNode) i;
-				// System.out.println("test2");
-				// DataContainerChild<? extends PathArgument, ?> t2 =
-				// t1.getChild(filtertype).get();
-				// ChoiceNode t3 = (ChoiceNode) t2;
-				// System.out.println("test3");
-				// DataContainerChild<? extends PathArgument, ?> t4 =
-				// t3.getChild(subtreeFilter).get();
-				// if (t4 != null) {
-				// System.out.println("test4");
-				// AnyXmlNode anyXmlFilter = (AnyXmlNode) t4;
-				// org.w3c.dom.Node nodeFilter =
-				// anyXmlFilter.getValue().getNode();
-				// org.w3c.dom.Document document =
-				// nodeFilter.getOwnerDocument();
-				// document.renameNode(nodeFilter, NOTIFICATION_NS, "filter");
-				// DOMSource domSource = anyXmlFilter.getValue();
-				// esri.setFilter(domSource);
-				// }
-				LOG.info("Parsing filter-type complete : "+esri.getFilter());
+				NodeIdentifier filtertype = new NodeIdentifier(N_SUBTREE_FILTER_TYPE_NAME);
+				NodeIdentifier subtreeFilter = new NodeIdentifier(N_SUBTREE_FILTER_NAME);
+				if (conNode.getChild(filtertype).isPresent()) {
+					ChoiceNode c2 = (ChoiceNode) conNode.getChild(filtertype).get();
+					DataContainerChild<? extends PathArgument, ?> t2 = c2.getChild(subtreeFilter).get();
+					if (t2 != null) {
+						AnyXmlNode anyXmlFilter = (AnyXmlNode) t2;
+						org.w3c.dom.Node nodeFilter = anyXmlFilter.getValue().getNode();
+						org.w3c.dom.Document document = nodeFilter.getOwnerDocument();
+						document.renameNode(nodeFilter, NOTIFICATION_NS, "filter");
+						DOMSource domSource = anyXmlFilter.getValue();
+						esri.setFilter(domSource);
+					} else {
+						LOG.error("Only subtree filter supported at the moment.");
+					}
+				}
+				LOG.info("Parsing filter-type complete : " + esri.getFilter());
 				// Set the SubscriptionStreamStatus to inactive, as long as no
 				// Notification is sent to client
 				subscriptionInfo.setSubscriptionStreamStatus(SubscriptionStreamStatus.inactive);
@@ -675,6 +703,9 @@ public class RpcImpl implements DOMRpcImplementation {
 					}
 					LOG.info("Parsing subscription-id complete");
 				}
+				if (correctEstablishOrModifyInput(esri)) {
+					return esri;
+				}
 			} catch (Exception e) {
 				LOG.error(e.toString());
 			}
@@ -682,10 +713,24 @@ public class RpcImpl implements DOMRpcImplementation {
 			error = Errors.printError(errors.input_not_instance_of);
 			esri = null;
 		}
-		if (correctEstablishOrModifyInput(esri)) {
-			return esri;
-		}
 		return esri;
+	}
+
+	private boolean subStartTimeIsBeforeSystemTime(String subStartTime) {
+		Long currentTime = new Date().getTime();
+		DateFormat format = new SimpleDateFormat(PeriodicNotification.YANG_DATEANDTIME_FORMAT_BLUEPRINT);
+		Long subscriptionStartTime;
+		try {
+			subscriptionStartTime = format.parse(subStartTime).getTime();
+			if (subscriptionStartTime < currentTime) {
+				return true;
+			}
+		} catch (ParseException e) {
+			LOG.error("Failed to parse subscription-start-time");
+			e.printStackTrace();
+		}
+
+		return false;
 	}
 
 	// TODO check the input
@@ -693,15 +738,27 @@ public class RpcImpl implements DOMRpcImplementation {
 		Boolean result = false;
 		if (!esri.getEncoding().equals("encode-xml")) {
 			LOG.error("Only encode-xml supported");
-			return false;
+			return result;
 		} else {
 			LOG.info("Correct encoding");
 		}
-		// Compare if start-time is before system time is prooved in
-		// NotificationEngine
+		// Comparison if start-time is before system time is proved while
+		// parsing
+		// Compare if sub-start-time is before sub-stop-time.
+		if (!subscriptionInfo.getStartTime().equals("-1")) {
+			DateFormat format = new SimpleDateFormat(PeriodicNotification.YANG_DATEANDTIME_FORMAT_BLUEPRINT);
+			try {
+				Long subscriptionStartTime = format.parse(esri.getSubscriptionStartTime()).getTime();
+				Long subscriptionStopTime = format.parse(esri.getSubscriptionStopTime()).getTime();
 
-		// TODO: Compare if startTime is before stopTime.
-		
+				if (subscriptionStartTime >= subscriptionStopTime) {
+					return result;
+				}
+			} catch (ParseException e) {
+				LOG.error("Failed to parse subscription-start-time");
+				e.printStackTrace();
+			}
+		}
 		// Compare if stream is either NETCONF, OPERATIONAL or CONFIGURATION
 		switch (esri.getStream()) {
 
@@ -718,19 +775,19 @@ public class RpcImpl implements DOMRpcImplementation {
 			return result;
 		}
 		// Compare if Filter is correct, atm just subtree is supported
-//		if (true) {
-//			if (true) {
-//				if (esri.getFilter() != "subtree") {
-//					System.out.println(String.valueOf(date));
-//					LOG.error("Only subtree supported");
-//					return result;
-//				}
-//			}
-//		}
+		// if (true) {
+		// if (true) {
+		// if (esri.getFilter() != "subtree") {
+		// System.out.println(String.valueOf(date));
+		// LOG.error("Only subtree supported");
+		// return result;
+		// }
+		// }
+		// }
 		// Compare qos paramters: dscp, sub-dependecy and sub-priority
 		// Input should be checked now
 		result = true;
-		LOG.info("Input is now checked");
+		LOG.info("Correct Rpc Input");
 		return result;
 	}
 
@@ -787,17 +844,17 @@ public class RpcImpl implements DOMRpcImplementation {
 		switch (outputStatus) {
 		case "Error":
 			cn = Builders.containerBuilder().withNodeIdentifier(N_ESTABLISH_SUB_OUTPUT)
-					.withChild(ImmutableNodes.leafNode(N_SUB_RESULT_NAME, "internal error"))
+					.withChild(ImmutableNodes.leafNode(N_RESULT_NAME, "internal error"))
 					.withChild(ImmutableNodes.leafNode(N_SUB_ID_NAME, sid)).build();
 			break;
 		case "Accepted":
 			cn = Builders.containerBuilder().withNodeIdentifier(N_ESTABLISH_SUB_OUTPUT)
-					.withChild(ImmutableNodes.leafNode(N_SUB_RESULT_NAME, "ok"))
+					.withChild(ImmutableNodes.leafNode(N_RESULT_NAME, "ok"))
 					.withChild(ImmutableNodes.leafNode(N_SUB_ID_NAME, sid)).build();
 			break;
 		case "Rejected":
 			cn = Builders.containerBuilder().withNodeIdentifier(N_ESTABLISH_SUB_OUTPUT)
-					.withChild(ImmutableNodes.leafNode(N_SUB_RESULT_NAME, "error-no-such-option"))
+					.withChild(ImmutableNodes.leafNode(N_RESULT_NAME, "error-no-such-option"))
 					.withChild(ImmutableNodes.leafNode(N_SUB_ID_NAME, sid)).build();
 			break;
 		default:
@@ -877,28 +934,28 @@ public class RpcImpl implements DOMRpcImplementation {
 					.withChild(ImmutableNodes.leafNode(N_SUB_ID_NAME, subInfo.getSubscriptionId()))
 					.withChild(ImmutableNodes.leafNode(N_ENCODING_NAME, subInfo.getEncoding()))
 					.withChild(ImmutableNodes.leafNode(N_STREAM_NAME, subInfo.getStream()))
-					.withChild(ImmutableNodes.leafNode(N_SUB_START_TIME_NAME, subInfo.getSubscriptionStartTime()))
-					.withChild(ImmutableNodes.leafNode(N_SUB_STOP_TIME_NAME, subInfo.getSubscriptionStopTime()))
+					.withChild(ImmutableNodes.leafNode(Y_SUB_START_TIME_NAME, subInfo.getSubscriptionStartTime()))
+					.withChild(ImmutableNodes.leafNode(Y_SUB_STOP_TIME_NAME, subInfo.getSubscriptionStopTime()))
 					.withChild(ImmutableNodes.leafNode(N_START_TIME_NAME, subInfo.getStartTime()))
 					.withChild(ImmutableNodes.leafNode(N_STOP_TIME_NAME, subInfo.getStopTime()))
 					.withChild(ImmutableNodes.leafNode(N_UPDATE_FILTER_NAME, subInfo.getFilter()))
-					.withChild(ImmutableNodes.leafNode(N_DSCP_NAME, subInfo.getDscp()))
-					.withChild(ImmutableNodes.leafNode(N_SUB_PRIORITY_NAME, subInfo.getSubscriptionPriority()))
-					.withChild(ImmutableNodes.leafNode(N_SUB_DEPENDENCY_NAME, subInfo.getSubscriptionDependency()))
+					.withChild(ImmutableNodes.leafNode(Y_DSCP_NAME, subInfo.getDscp()))
+					.withChild(ImmutableNodes.leafNode(Y_SUB_PRIORITY_NAME, subInfo.getSubscriptionPriority()))
+					.withChild(ImmutableNodes.leafNode(Y_SUB_DEPENDENCY_NAME, subInfo.getSubscriptionDependency()))
 					.withChild(ImmutableNodes.leafNode(Y_PERIOD_NAME, subInfo.getPeriod())).build();
 		} else {
 			cn = Builders.containerBuilder().withNodeIdentifier(N_ESTABLISH_SUB_OUTPUT)
 					.withChild(ImmutableNodes.leafNode(N_SUB_ID_NAME, subInfo.getSubscriptionId()))
 					.withChild(ImmutableNodes.leafNode(N_ENCODING_NAME, subInfo.getEncoding()))
 					.withChild(ImmutableNodes.leafNode(N_STREAM_NAME, subInfo.getStream()))
-					.withChild(ImmutableNodes.leafNode(N_SUB_START_TIME_NAME, subInfo.getSubscriptionStartTime()))
-					.withChild(ImmutableNodes.leafNode(N_SUB_STOP_TIME_NAME, subInfo.getSubscriptionStopTime()))
+					.withChild(ImmutableNodes.leafNode(Y_SUB_START_TIME_NAME, subInfo.getSubscriptionStartTime()))
+					.withChild(ImmutableNodes.leafNode(Y_SUB_STOP_TIME_NAME, subInfo.getSubscriptionStopTime()))
 					.withChild(ImmutableNodes.leafNode(N_START_TIME_NAME, subInfo.getStartTime()))
 					.withChild(ImmutableNodes.leafNode(N_STOP_TIME_NAME, subInfo.getStopTime()))
 					.withChild(ImmutableNodes.leafNode(N_UPDATE_FILTER_NAME, subInfo.getFilter()))
-					.withChild(ImmutableNodes.leafNode(N_DSCP_NAME, subInfo.getDscp()))
-					.withChild(ImmutableNodes.leafNode(N_SUB_PRIORITY_NAME, subInfo.getSubscriptionPriority()))
-					.withChild(ImmutableNodes.leafNode(N_SUB_DEPENDENCY_NAME, subInfo.getSubscriptionDependency()))
+					.withChild(ImmutableNodes.leafNode(Y_DSCP_NAME, subInfo.getDscp()))
+					.withChild(ImmutableNodes.leafNode(Y_SUB_PRIORITY_NAME, subInfo.getSubscriptionPriority()))
+					.withChild(ImmutableNodes.leafNode(Y_SUB_DEPENDENCY_NAME, subInfo.getSubscriptionDependency()))
 					.withChild(ImmutableNodes.leafNode(Y_DAMPENING_PERIOD_NAME, subInfo.getDampeningPeriod())).build();
 		}
 		return cn;

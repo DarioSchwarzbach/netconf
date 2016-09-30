@@ -18,10 +18,12 @@ import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf._5277.netco
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.Encodings;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.Subscriptions;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.subscriptions.Subscription;
+import org.opendaylight.yangpushserver.subscription.SubscriptionEngine.operations;
 import org.opendaylight.yangtools.yang.common.QName;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.NodeIdentifier;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.NodeIdentifierWithPredicates;
+import org.opendaylight.yangtools.yang.data.api.schema.ChoiceNode;
 import org.opendaylight.yangtools.yang.data.api.schema.ContainerNode;
 import org.opendaylight.yangtools.yang.data.api.schema.MapEntryNode;
 import org.opendaylight.yangtools.yang.data.api.schema.MapNode;
@@ -40,6 +42,14 @@ public class SubscriptionEngine {
 	public static final String NOTIF_BIS = "urn:ietf:params:xml:ns:yang:ietf-event-notifications";
 	public static final String NOTIF_BIS_DATE = "2016-06-15";
 
+	public static final QName N_SUB_ID_NAME = QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "subscription-id");
+	public static final QName Y_DAMPENING_PERIOD_NAME = QName.create(YP_NS, YP_NS_DATE, "dampening-period");
+	public static final QName Y_PERIOD_NAME = QName.create(YP_NS, YP_NS_DATE, "period");
+	public static final QName Y_UPDATE_TRIGGER_NAME = QName.create(YP_NS, YP_NS_DATE, "update-trigger");
+	public static final QName Y_SUB_DEPENDENCY_NAME = QName.create(YP_NS, YP_NS_DATE, "subscription-dependency");
+	public static final QName Y_SUB_PRIORITY_NAME = QName.create(YP_NS, YP_NS_DATE, "subscription-priority");
+
+	
 	// global data broker
 	private DOMDataBroker globalDomDataBroker = null;
 	// self instance
@@ -87,8 +97,11 @@ public class SubscriptionEngine {
 	}
 
 	public String generateSubscriptionId() {
+		if (Integer.toString(sub_id).equals("-1")){
+			sub_id=0;
+		}
 		this.sub_id++;
-		return "20" + Integer.toString(this.sub_id);
+		return Integer.toString(this.sub_id);
 	}
 
 	public void createSubscriptionDataStore() {
@@ -124,37 +137,57 @@ public class SubscriptionEngine {
 	public void updateMdSal(SubscriptionInfo subscriptionInfo, operations type) {
 		// Storing files to MD-SAL
 		// TODO Check if storing the data is correct.
-		// NodeIdentifier subscriptionId =
-		// NodeIdentifier.create(QName.create(Subscriptions.QNAME,
-		// "subscription-id"));
 		NodeIdentifier encoding = NodeIdentifier.create(QName.create(Encodings.QNAME, "encoding"));
-		// NodeIdentifier updateTrigger =
-		// NodeIdentifier.create(QName.create(Subscriptions.QNAME,
-		// "update-trigger"));
-		// TODO IT WORKS!!!!
 		NodeIdentifier stream = NodeIdentifier.create(QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "stream"));
 		NodeIdentifier startTime = NodeIdentifier.create(QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "startTime"));
 		NodeIdentifier stopTime = NodeIdentifier.create(QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "stopTime"));
-		NodeIdentifier subStartTime = NodeIdentifier.create(QName.create("urn:ietf:params:xml:ns:yang:ietf-yang-push", NOTIF_BIS_DATE, "subscription-start-time"));
+		NodeIdentifier subStartTime = NodeIdentifier.create(QName.create(YP_NS, YP_NS_DATE, "subscription-start-time"));
+		NodeIdentifier subStopTime = NodeIdentifier.create(QName.create(YP_NS, YP_NS_DATE, "subscription-stop-time"));
+		NodeIdentifier dscp = NodeIdentifier.create(QName.create(YP_NS, YP_NS_DATE, "dscp"));
+		NodeIdentifier subDependency = new NodeIdentifier(Y_SUB_DEPENDENCY_NAME);
+		NodeIdentifier subPriority = new NodeIdentifier(Y_SUB_PRIORITY_NAME);
+		NodeIdentifier updateTrigger = new NodeIdentifier(Y_UPDATE_TRIGGER_NAME);
+		NodeIdentifier period = new NodeIdentifier(Y_PERIOD_NAME);
+		NodeIdentifier dampeningPeriod = new NodeIdentifier(Y_DAMPENING_PERIOD_NAME);
+
+		
+		Long sidValue = Long.valueOf(subscriptionInfo.getSubscriptionId());
+		Short subPriorityValue = Short.valueOf(subscriptionInfo.getSubscriptionPriority());
+		Short dscpValue = Short.valueOf(subscriptionInfo.getDscp());
+//		ChoiceNode c1 = Builders.choiceBuilder().withNodeIdentifier(result)
+//				.withChild(ImmutableNodes.leafNode(subid, sidValue)).build();
+		ChoiceNode c2 = null;
+
+		// Whether its periodic or on-Change the node must be built differently
+		if (!subscriptionInfo.getPeriod().equals(null)) {
+			LOG.info("Period" + subscriptionInfo.getPeriod().toString());
+			c2 = Builders.choiceBuilder().withNodeIdentifier(updateTrigger)
+					.withChild(ImmutableNodes.leafNode(period, subscriptionInfo.getPeriod())).build();
+		} else {
+			LOG.info("DP" + subscriptionInfo.getDampeningPeriod().toString());
+			c2 = Builders.choiceBuilder().withNodeIdentifier(updateTrigger)
+					.withChild(ImmutableNodes.leafNode(dampeningPeriod, subscriptionInfo.getDampeningPeriod())).build();
+		}
 		
 		YangInstanceIdentifier pid = YangInstanceIdentifier.builder().node(Subscriptions.QNAME).node(Subscription.QNAME)
 				.build();
 
 		NodeIdentifierWithPredicates p = new NodeIdentifierWithPredicates(
 				QName.create(Subscriptions.QNAME, "subscription"), QName.create(Subscriptions.QNAME, "subscription-id"),
-				sub_id);
+				sidValue);
 
 		MapEntryNode men = ImmutableNodes.mapEntryBuilder().withNodeIdentifier(p)
-				// .withChild(ImmutableNodes.leafNode(subscriptionId, sub_id))
 				// .withChild(ImmutableNodes.leafNode(updateTrigger,
 				// subscriptionInfo.getUpdateTrigger()))
-				// .withChild(ImmutableNodes.leafNode(stream,
-				// prefix+subscriptionInfo.getStream())
+				.withChild(c2)
 				.withChild(ImmutableNodes.leafNode(stream, subscriptionInfo.getStream()))
 				.withChild(ImmutableNodes.leafNode(subStartTime, subscriptionInfo.getSubscriptionStartTime()))
-				.withChild(ImmutableNodes.leafNode(startTime, subscriptionInfo.getStartTime()))
-				
-//				.withChild(ImmutableNodes.leafNode(stopTime, subscriptionInfo.getStopTime()))
+				.withChild(ImmutableNodes.leafNode(subStopTime, subscriptionInfo.getSubscriptionStopTime()))
+				.withChild(ImmutableNodes.leafNode(subPriority, subPriorityValue))
+				.withChild(ImmutableNodes.leafNode(subDependency, subscriptionInfo.getSubscriptionDependency()))
+				.withChild(ImmutableNodes.leafNode(dscp, dscpValue))
+				.withChild(ImmutableNodes.leafNode(startTime, subscriptionInfo.getStartTime()))					
+				.withChild(ImmutableNodes.leafNode(stopTime, subscriptionInfo.getStopTime()))
 				.withChild(ImmutableNodes.leafNode(encoding, subscriptionInfo.getEncoding())).build();
 
 		DOMDataWriteTransaction tx = this.globalDomDataBroker.newWriteOnlyTransaction();
