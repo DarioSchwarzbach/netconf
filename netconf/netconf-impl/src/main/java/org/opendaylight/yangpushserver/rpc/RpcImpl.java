@@ -23,11 +23,12 @@ import org.opendaylight.controller.md.sal.dom.api.DOMRpcImplementation;
 import org.opendaylight.controller.md.sal.dom.api.DOMRpcProviderService;
 import org.opendaylight.controller.md.sal.dom.api.DOMRpcResult;
 import org.opendaylight.controller.md.sal.dom.spi.DefaultDOMRpcResult;
-import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf._5277.netconf.rev160615.base.filter.FilterType;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.DeleteSubscriptionInput;
+import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.DeleteSubscriptionOutput;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.EstablishSubscriptionInput;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.EstablishSubscriptionOutput;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.ModifySubscriptionInput;
+import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.ModifySubscriptionOutput;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.establish.subscription.input.filter.type.UpdateFilter;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.update.filter.update.filter.Subtree;
 import org.opendaylight.yangpushserver.notification.NotificationEngine;
@@ -38,6 +39,7 @@ import org.opendaylight.yangpushserver.subscription.SubscriptionEngine.operation
 import org.opendaylight.yangpushserver.subscription.SubscriptionInfo;
 import org.opendaylight.yangpushserver.subscription.SubscriptionInfo.SubscriptionStreamStatus;
 import org.opendaylight.yangtools.yang.common.QName;
+import org.opendaylight.yangtools.yang.common.RpcError;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.AugmentationIdentifier;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.NodeIdentifier;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.PathArgument;
@@ -48,7 +50,6 @@ import org.opendaylight.yangtools.yang.data.api.schema.ContainerNode;
 import org.opendaylight.yangtools.yang.data.api.schema.DataContainerChild;
 import org.opendaylight.yangtools.yang.data.api.schema.LeafNode;
 import org.opendaylight.yangtools.yang.data.api.schema.NormalizedNode;
-import org.opendaylight.yangtools.yang.data.api.schema.NormalizedNodeContainer;
 import org.opendaylight.yangtools.yang.data.impl.schema.Builders;
 import org.opendaylight.yangtools.yang.data.impl.schema.ImmutableNodes;
 import org.opendaylight.yangtools.yang.model.api.SchemaPath;
@@ -92,6 +93,7 @@ public class RpcImpl implements DOMRpcImplementation {
 	// public static final QName N_SUB_DEPENDENCY_NAME = QName.create(NOTIF_BIS,
 	// NOTIF_BIS_DATE,
 	// "subscription-dependency");
+	public static final QName N_ES_OUTPUT_RESULT = QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "result");
 	public static final QName N_RESULT_NAME = QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "result");
 	public static final QName N_SUB_RESULT_NAME = QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "subscription-result");
 
@@ -113,8 +115,11 @@ public class RpcImpl implements DOMRpcImplementation {
 	// ietf-event-notifications.yang
 	public static final NodeIdentifier N_ESTABLISH_SUB_OUTPUT = NodeIdentifier
 			.create(EstablishSubscriptionOutput.QNAME);
-	public static final QName N_ES_OUTPUT_RESULT = QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "result");
 	public static final NodeIdentifier N_ESTABLISH_SUB_INPUT = NodeIdentifier.create(EstablishSubscriptionInput.QNAME);
+	public static final NodeIdentifier N_DELETE_SUB_OUTPUT = NodeIdentifier.create(DeleteSubscriptionOutput.QNAME);
+	public static final NodeIdentifier N_DELETE_SUB_INPUT = NodeIdentifier.create(DeleteSubscriptionInput.QNAME);
+	public static final NodeIdentifier N_MODIFY_SUB_OUTPUT = NodeIdentifier.create(ModifySubscriptionOutput.QNAME);
+	public static final NodeIdentifier N_MODIFY_SUB_INPUT = NodeIdentifier.create(ModifySubscriptionInput.QNAME);
 
 	// QNames used to construct establish filter present in
 	// ietf-event-notifications.yang
@@ -164,8 +169,7 @@ public class RpcImpl implements DOMRpcImplementation {
 	 * Registers RPC present in ietf-datastore-push module.
 	 */
 	private void registerRPCs() {
-		// Register RPC to DOMRpcProviderService, LOGs proofed this.
-		// +
+		// Register RPC to DOMRpcProviderService.
 		service.registerRpcImplementation(this, ESTABLISH_SUBSCRIPTION_RPC, MODIFY_SUBSCRIPTION_RPC,
 				DELETE_SUBSCRIPTION_RPC);
 	}
@@ -186,9 +190,6 @@ public class RpcImpl implements DOMRpcImplementation {
 		} else if (rpc.equals(DELETE_SUBSCRIPTION_RPC)) {
 			LOG.info("This is a delete subscrition RPC");
 			return deleteSubscriptionRpcHandler(input);
-			// } else if (rpc.equals(GET_SUBSCRIPTION_RPC)) {
-			// LOG.info("This is a get subscrition RPC");
-			// return getSubscriptionRpcHandler(input);
 		}
 		LOG.info("Unknown RPC...");
 		return Futures.immediateCheckedFuture((DOMRpcResult) new DefaultDOMRpcResult());
@@ -239,14 +240,28 @@ public class RpcImpl implements DOMRpcImplementation {
 		// Parse input arg
 		SubscriptionInfo inputData = parseDeleteSubExternalRpcInput(input, error);
 		// parsing should have been 'ok'
-		LOG.trace(inputData.toString());
 		LOG.info("Parsing complete");
+		LOG.trace("Delete Subscription parsed Input: " + inputData.toString());
 		if (subscriptionEngine.checkIfSubscriptionExists(inputData.getSubscriptionId())) {
 			subscriptionEngine.updateMdSal(subscriptionInfo, operations.delete);
+		} else {
+			LOG.error("No such subscription with this id.");
+			RpcError output = null;
+			return Futures.immediateCheckedFuture((DOMRpcResult) new DefaultDOMRpcResult(output));
 		}
 
-		// Because it's deleteSubscription, there will be no RPC output.
-		return null;
+		ContainerNode output = createDeleteSubOutput(inputData);
+		return Futures.immediateCheckedFuture((DOMRpcResult) new DefaultDOMRpcResult(output));
+	}
+
+	private ContainerNode createDeleteSubOutput(SubscriptionInfo inputData) {
+		// ContainerNode subResult =
+		// Builders.containerBuilder().withNodeIdentifier(NodeIdentifier.create(Y_SUB_RESULT_NAME)).build();
+		final ContainerNode cn = Builders.containerBuilder().withNodeIdentifier(N_ESTABLISH_SUB_OUTPUT)
+				.withChild(ImmutableNodes.leafNode(N_SUB_RESULT_NAME, "ok"))
+				.build();
+		LOG.info("output node: " + cn);
+		return cn;
 	}
 
 	/**
@@ -542,7 +557,8 @@ public class RpcImpl implements DOMRpcImplementation {
 								new SimpleDateFormat(YANG_DATEANDTIME_FORMAT_BLUEPRINT).format(new Date()));
 					}
 				} else {
-					esri.setSubscriptionStarTime(new SimpleDateFormat(YANG_DATEANDTIME_FORMAT_BLUEPRINT).format(new Date()));
+					esri.setSubscriptionStarTime(
+							new SimpleDateFormat(YANG_DATEANDTIME_FORMAT_BLUEPRINT).format(new Date()));
 				}
 				LOG.info("Parsing sub-start-time complete : " + esri.getSubscriptionStartTime());
 				// IV Parse sub-stop-time
