@@ -35,6 +35,13 @@
   </dependencyManagement>
 
   <dependencies>
+    <!-- new dependencies -->
+    <dependency>
+      <groupId>org.opendaylight.yangtools.model</groupId>
+      <artifactId>ietf-topology</artifactId>
+      <version>2013.10.21.7.5-SNAPSHOT</version>
+    </dependency>
+    <!-- new dependencies -->
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>ietf-netconf-monitoring</artifactId>

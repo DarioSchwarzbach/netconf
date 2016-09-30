@@ -16,6 +16,7 @@ import org.opendaylight.netconf.impl.NetconfServerDispatcherImpl;
 import org.opendaylight.netconf.impl.NetconfServerSessionNegotiatorFactory;
 import org.opendaylight.netconf.impl.SessionIdProvider;
 import org.opendaylight.netconf.impl.osgi.AggregatedNetconfOperationServiceFactory;
+import org.opendaylight.yangpushserver.impl.YangpushProvider;
 
 public class NetconfServerDispatcherModule extends AbstractNetconfServerDispatcherModule {
     public NetconfServerDispatcherModule(org.opendaylight.controller.config.api.ModuleIdentifier identifier, org.opendaylight.controller.config.api.DependencyResolver dependencyResolver) {
@@ -46,6 +47,10 @@ public class NetconfServerDispatcherModule extends AbstractNetconfServerDispatch
                 .build();
         final NetconfServerDispatcherImpl.ServerChannelInitializer serverChannelInitializer = new NetconfServerDispatcherImpl.ServerChannelInitializer(
                 serverNegotiatorFactory);
+
+        final YangpushProvider provider = new YangpushProvider();
+        provider.setMonitoringService(monitoringService);
+        getDomBrokerDependency().registerProvider(provider);
 
         return new NetconfServerDispatcherImpl(serverChannelInitializer, getBossThreadGroupDependency(), getWorkerThreadGroupDependency()) {
 

@@ -64,6 +64,10 @@
       <artifactId>ietf-yang-types-20130715</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.opendaylight.mdsal.model</groupId>
+      <artifactId>ietf-interfaces</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.opendaylight.yangtools</groupId>
       <artifactId>mockito-configuration</artifactId>
     </dependency>

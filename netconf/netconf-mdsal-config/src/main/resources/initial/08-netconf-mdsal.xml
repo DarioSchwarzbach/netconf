@@ -58,6 +58,11 @@
                   <type xmlns:prefix="urn:opendaylight:params:xml:ns:yang:controller:netty">prefix:netty-timer</type>
                   <name>global-timer</name>
               </timer>
+              <!-- Inject the default instance of MD-SAL's core BI service-->
+              <dom-broker>
+                  <type xmlns:prefix="urn:opendaylight:params:xml:ns:yang:controller:md:sal:dom">prefix:dom-broker-osgi-registry</type>
+                  <name>dom-broker</name>
+              </dom-broker>
           </module>
 
           <module>
@@ -249,5 +254,6 @@
       <capability>urn:opendaylight:params:xml:ns:yang:controller:threadpool:impl:scheduled?module=threadpool-impl-scheduled&amp;revision=2013-12-01</capability>
       <capability>urn:opendaylight:params:xml:ns:yang:controller:netconf:mdsal:notification?module=netconf-mdsal-notification&amp;revision=2015-08-03</capability>
       <capability>urn:opendaylight:params:xml:ns:yang:controller:netconf:mdsal:yang:library?module=netconf-mdsal-yang-library&amp;revision=2016-06-17</capability>
+      <capability>urn:opendaylight:params:xml:ns:yang:controller:md:sal:binding?module=opendaylight-md-sal-binding&amp;revision=2013-10-28</capability>
   </required-capabilities>
 </snapshot>
