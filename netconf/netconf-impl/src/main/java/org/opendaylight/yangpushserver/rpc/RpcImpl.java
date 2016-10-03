@@ -402,11 +402,11 @@ public class RpcImpl implements DOMRpcImplementation {
 		// sent
 		if (inputData.getDampeningPeriod() != null) {
 			LOG.info("Register on-Change-Notifications");
-			// notificationEngine.registerOnChangeNotification(inputData.getSubscriptionId());
+		    notificationEngine.registerOnChangeNotification(inputData.getSubscriptionId());
 
 		} else if (inputData.getPeriod() != null) {
 			LOG.info("Register periodic-Notifications");
-			// notificationEngine.registerPeriodicNotification(inputData.getSubscriptionId());
+			notificationEngine.registerPeriodicNotification(inputData.getSubscriptionId());
 
 		} else {
 			LOG.error("Wrong Subscription exists, neither on-Change nor periodic Subscription");
@@ -699,7 +699,7 @@ public class RpcImpl implements DOMRpcImplementation {
 				LOG.info("Parsing filter-type complete : " + esri.getFilter());
 				// Set the SubscriptionStreamStatus to inactive, as long as no
 				// Notification is sent to client
-				subscriptionInfo.setSubscriptionStreamStatus(SubscriptionStreamStatus.inactive);
+				esri.setSubscriptionStreamStatus(SubscriptionStreamStatus.inactive);
 				// Check if it is a modify subscription
 				if (!isEstablish) {
 					// Parse Subscription ID

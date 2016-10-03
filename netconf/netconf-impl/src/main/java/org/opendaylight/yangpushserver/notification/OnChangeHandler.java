@@ -139,8 +139,9 @@ public class OnChangeHandler implements AutoCloseable, DOMDataChangeListener {
 			// }
 			// quietClose();
 			// }
+		} else {
+			LOG.info("Dampening period of {} not over yet...no update will be triggered", dampeningPeriod);
 		}
-		LOG.info("Dampening period of {} not over yet...no update will be triggered", dampeningPeriod);
 	}
 
 	/**
@@ -175,14 +176,14 @@ public class OnChangeHandler implements AutoCloseable, DOMDataChangeListener {
 		final Runnable triggerAction = new Runnable() {
 			@Override
 			public void run() {
-				registerListeners();
+				LOG.info("DOMDataChangeListener for subscription {} registered and subscription set to active",
+						subscriptionID);
 				if (SubscriptionEngine.getInstance().getSubscription(subscriptionID)
 						.getSubscriptionStreamStatus() == SubscriptionStreamStatus.inactive) {
 					SubscriptionEngine.getInstance().getSubscription(subscriptionID)
-							.setSubscriptionStreamStatus(SubscriptionStreamStatus.active);
+					.setSubscriptionStreamStatus(SubscriptionStreamStatus.active);
 				}
-				LOG.info("DOMDataChangeListener for subscription {} registered and subscription set to active",
-						subscriptionID);
+				registerListeners();
 			}
 		};
 		Long deltaTillStart = 0l;
@@ -234,8 +235,8 @@ public class OnChangeHandler implements AutoCloseable, DOMDataChangeListener {
 		case "NETCONF":
 			this.registration = db.registerDataChangeListener(LogicalDatastoreType.OPERATIONAL, yid, this,
 					DataChangeScope.BASE);
-			this.registration = db.registerDataChangeListener(LogicalDatastoreType.CONFIGURATION, yid, this,
-					DataChangeScope.BASE);
+//			this.registration = db.registerDataChangeListener(LogicalDatastoreType.CONFIGURATION, yid, this,
+//					DataChangeScope.BASE);
 			break;
 		case "CONFIGURATION":
 			this.registration = db.registerDataChangeListener(LogicalDatastoreType.CONFIGURATION, yid, this,
