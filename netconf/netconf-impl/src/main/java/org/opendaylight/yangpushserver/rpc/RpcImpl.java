@@ -151,7 +151,7 @@ public class RpcImpl implements DOMRpcImplementation {
 	private DOMDataBroker globalDomDataBroker;
 	private SubscriptionEngine subscriptionEngine = null;
 	private NotificationEngine notificationEngine = null;
-	private SubscriptionInfo subscriptionInfo = null;
+	private SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
 	String date = String.valueOf(new Date().getTime());
 
 	public RpcImpl(DOMRpcProviderService service, DOMDataBroker globalDomDataBroker) {
@@ -160,7 +160,6 @@ public class RpcImpl implements DOMRpcImplementation {
 		this.globalDomDataBroker = globalDomDataBroker;
 		this.subscriptionEngine = SubscriptionEngine.getInstance();
 		this.notificationEngine = NotificationEngine.getInstance();
-		this.subscriptionInfo = SubscriptionInfo.getInstance();
 		// TODO Register?
 		registerRPCs();
 	}
@@ -258,8 +257,7 @@ public class RpcImpl implements DOMRpcImplementation {
 		// ContainerNode subResult =
 		// Builders.containerBuilder().withNodeIdentifier(NodeIdentifier.create(Y_SUB_RESULT_NAME)).build();
 		final ContainerNode cn = Builders.containerBuilder().withNodeIdentifier(N_ESTABLISH_SUB_OUTPUT)
-				.withChild(ImmutableNodes.leafNode(N_SUB_RESULT_NAME, "ok"))
-				.build();
+				.withChild(ImmutableNodes.leafNode(N_SUB_RESULT_NAME, "ok")).build();
 		LOG.info("output node: " + cn);
 		return cn;
 	}
@@ -398,7 +396,7 @@ public class RpcImpl implements DOMRpcImplementation {
 		sid = this.subscriptionEngine.generateSubscriptionId();
 		inputData.setSubscription_id(sid);
 		// Saving the Subscription Information locally & on MDSAL datastore
-		this.subscriptionEngine.updateMdSal(subscriptionInfo, operations.establish);
+		this.subscriptionEngine.updateMdSal(inputData, operations.establish);
 
 		// Check if on-Change-Notifications or periodic-Notifications should be
 		// sent
@@ -441,7 +439,7 @@ public class RpcImpl implements DOMRpcImplementation {
 		ChoiceNode c2 = null;
 
 		// Whether its periodic or on-Change the node must be built differently
-		if (!subscriptionInfo.getPeriod().equals(null)) {
+		if (!(subscriptionInfo.getPeriod() == null)) {
 			LOG.info("Period" + subscriptionInfo.getPeriod().toString());
 			c2 = Builders.choiceBuilder().withNodeIdentifier(updateTrigger)
 					.withChild(ImmutableNodes.leafNode(period, subscriptionInfo.getPeriod())).build();
@@ -474,7 +472,7 @@ public class RpcImpl implements DOMRpcImplementation {
 	// Parsing the whole RPC, part by part
 	private SubscriptionInfo parseEstablishAndModifySubExternalRpcInput(NormalizedNode<?, ?> input, String error,
 			Boolean isEstablish) {
-		SubscriptionInfo esri = SubscriptionInfo.getInstance();
+		SubscriptionInfo esri = new SubscriptionInfo();
 		ContainerNode conNode = null;
 		error = "";
 		// Checks if input is missing/null
@@ -550,7 +548,8 @@ public class RpcImpl implements DOMRpcImplementation {
 						if (!subStartTimeIsBeforeSystemTime(subStartTimeNode.getValue().toString())) {
 							esri.setSubscriptionStarTime(subStartTimeNode.getValue().toString());
 						} else {
-							esri.setSubscriptionStarTime("-1");
+							esri.setSubscriptionStarTime(
+									new SimpleDateFormat(YANG_DATEANDTIME_FORMAT_BLUEPRINT).format(new Date()));
 						}
 					} else {
 						esri.setSubscriptionStarTime(
@@ -585,10 +584,10 @@ public class RpcImpl implements DOMRpcImplementation {
 					if (startTimeNode.getValue().equals(null)) {
 						esri.setStartTime(startTimeNode.getValue().toString());
 					} else {
-						esri.setStartTime("-1");
+						esri.setStartTime(null);
 					}
 				} else {
-					esri.setStartTime("-1");
+					esri.setStartTime(null);
 				}
 				LOG.info("Parsing start-time complete : " + esri.getStartTime());
 				// VI Parse stop-time
@@ -600,10 +599,10 @@ public class RpcImpl implements DOMRpcImplementation {
 					if (stopTimeNode.getValue().equals(null)) {
 						esri.setStopTime(stopTimeNode.getValue().toString());
 					} else {
-						esri.setStopTime("-1");
+						esri.setStopTime(null);
 					}
 				} else {
-					esri.setStopTime("-1");
+					esri.setStopTime(null);
 				}
 				LOG.info("Parsing stop-time complete : " + esri.getStopTime());
 				// VII Parsing update-trigger
@@ -761,20 +760,23 @@ public class RpcImpl implements DOMRpcImplementation {
 		// Comparison if start-time is before system time is proved while
 		// parsing
 		// Compare if sub-start-time is before sub-stop-time.
-		if (!subscriptionInfo.getStartTime().equals("-1")) {
-			DateFormat format = new SimpleDateFormat(PeriodicNotification.YANG_DATEANDTIME_FORMAT_BLUEPRINT);
-			try {
-				Long subscriptionStartTime = format.parse(esri.getSubscriptionStartTime()).getTime();
-				Long subscriptionStopTime = format.parse(esri.getSubscriptionStopTime()).getTime();
-
-				if (subscriptionStartTime >= subscriptionStopTime) {
-					return result;
-				}
-			} catch (ParseException e) {
-				LOG.error("Failed to parse subscription-start-time");
-				e.printStackTrace();
-			}
-		}
+		// if (!(subscriptionInfo.getStartTime()==null)) {
+		// DateFormat format = new
+		// SimpleDateFormat(PeriodicNotification.YANG_DATEANDTIME_FORMAT_BLUEPRINT);
+		// try {
+		// Long subscriptionStartTime =
+		// format.parse(esri.getSubscriptionStartTime()).getTime();
+		// Long subscriptionStopTime =
+		// format.parse(esri.getSubscriptionStopTime()).getTime();
+		//
+		// if (subscriptionStartTime >= subscriptionStopTime) {
+		// return result;
+		// }
+		// } catch (ParseException e) {
+		// LOG.error("Failed to parse subscription-start-time");
+		// e.printStackTrace();
+		// }
+		// }
 		// Compare if stream is either NETCONF, OPERATIONAL or CONFIGURATION
 		switch (esri.getStream()) {
 
@@ -835,10 +837,11 @@ public class RpcImpl implements DOMRpcImplementation {
 		LOG.info("Parsing complete");
 		// get subscription id from subscription engine.
 		sid = this.subscriptionEngine.generateSubscriptionId();
+		LOG.info(sid);
 		inputData.setSubscription_id(sid);
 
 		// Saving the Subscription Information locally & on MDSAL datastore
-		this.subscriptionEngine.updateMdSal(subscriptionInfo, operations.modify);
+		this.subscriptionEngine.updateMdSal(inputData, operations.modify);
 
 		// The novel Notifications will be registered
 		if (!inputData.getDampeningPeriod().equals(null)) {

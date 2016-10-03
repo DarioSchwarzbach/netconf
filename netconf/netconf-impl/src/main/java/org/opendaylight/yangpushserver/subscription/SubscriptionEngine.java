@@ -99,6 +99,7 @@ public class SubscriptionEngine {
 	public String generateSubscriptionId() {
 		if (Integer.toString(sub_id).equals("-1")){
 			sub_id=0;
+			return Integer.toString(sub_id);
 		}
 		this.sub_id++;
 		return Integer.toString(this.sub_id);
@@ -159,7 +160,7 @@ public class SubscriptionEngine {
 		ChoiceNode c2 = null;
 
 		// Whether its periodic or on-Change the node must be built differently
-		if (!subscriptionInfo.getPeriod().equals(null)) {
+		if (!(subscriptionInfo.getPeriod() == null)) {
 			LOG.info("Period" + subscriptionInfo.getPeriod().toString());
 			c2 = Builders.choiceBuilder().withNodeIdentifier(updateTrigger)
 					.withChild(ImmutableNodes.leafNode(period, subscriptionInfo.getPeriod())).build();

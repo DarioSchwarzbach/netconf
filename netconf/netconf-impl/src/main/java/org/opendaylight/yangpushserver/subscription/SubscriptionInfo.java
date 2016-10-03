@@ -143,7 +143,7 @@ public final class SubscriptionInfo {
 	}
 
 	public String getSubscriptionId() {
-		return subscriptionId.toString();
+		return subscriptionId;
 	}
 
 	public void setSubscription_id(String subscriptionId) {
@@ -206,10 +206,10 @@ public final class SubscriptionInfo {
 	// period.toString()+"\n" ;
 	// }
 
-	public static SubscriptionInfo getInstance() {
-		if (instance == null) {
-			instance = new SubscriptionInfo();
-		}
-		return instance;
-	}
+//	public static SubscriptionInfo getInstance() {
+//		if (instance == null) {
+//			instance = new SubscriptionInfo();
+//		}
+//		return instance;
+//	}
 }
