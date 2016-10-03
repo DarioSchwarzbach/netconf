@@ -21,19 +21,29 @@ import org.w3c.dom.Element;
 import com.google.common.base.Preconditions;
 
 /**
- * Special type of netconf message that wraps an on change YANG push notification
+ * Special type of netconf message that wraps a on change YANG push notification
  * like defined in {@link PushChangeUpdate}.
  * 
  * @author Dario.Schwarzbach
  *
  */
-public final class OnChangeNotification extends NetconfMessage {
-	private static final Logger LOG = LoggerFactory.getLogger(OnChangeNotification.class);
+public final class OAMNotification extends NetconfMessage {
+	private static final Logger LOG = LoggerFactory.getLogger(OAMNotification.class);
 
 	public static final String PUSH_CHANGE_UPDATE = PushChangeUpdate.QNAME.getLocalName();
 	public static final String PUSH_CHANGE_UPDATE_NAMESPACE = PushChangeUpdate.QNAME.getNamespace() + ":1.0";
 	public static final String CHANGES_XML = "datastore-changes-xml";
 	public static final String CHANGES_JSON = "datastore-changes-json";
+	
+//	replayComplete, 
+//	notificationComplete, 
+//	subscription_started, 
+//	subscription_suspended, 
+//	subscription_resumed, 
+//	subscription_modified,
+//	subscription_terminated,
+//	added_to_subscription, 
+//	removed_from_subscription
 
 	/**
 	 * Used for unknown/un-parse-able event-times
@@ -47,15 +57,14 @@ public final class OnChangeNotification extends NetconfMessage {
 	 * Create new on change notification and capture the timestamp in the
 	 * constructor
 	 */
-	public OnChangeNotification(final Document notificationContent, final String subscriptionID) {
+	public OAMNotification(final Document notificationContent, final String subscriptionID) {
 		this(notificationContent, subscriptionID, new Date());
 	}
 
 	/**
 	 * Create new notification with provided timestamp
 	 */
-	private OnChangeNotification(final Document notificationContent, final String subscriptionID,
-			final Date eventTime) {
+	private OAMNotification(final Document notificationContent, final String subscriptionID, final Date eventTime) {
 		super(wrapNotification(notificationContent, subscriptionID, eventTime));
 		this.subscriptionID = subscriptionID;
 		this.eventTime = eventTime;
@@ -137,5 +146,17 @@ public final class OnChangeNotification extends NetconfMessage {
 	private static String getSerializedEventTime(final Date eventTime, String pattern) {
 		// SimpleDateFormat is not threadsafe, cannot be in a constant
 		return new SimpleDateFormat(pattern).format(eventTime);
+	}
+
+	public static enum OAMStatus {
+		replayComplete, 
+		notificationComplete, 
+		subscription_started, 
+		subscription_suspended, 
+		subscription_resumed, 
+		subscription_modified,
+		subscription_terminated,
+		added_to_subscription, 
+		removed_from_subscription
 	}
 }

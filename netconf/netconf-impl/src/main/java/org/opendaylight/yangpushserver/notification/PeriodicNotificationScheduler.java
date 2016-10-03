@@ -81,7 +81,7 @@ public class PeriodicNotificationScheduler implements AutoCloseable {
 			}
 		};
 		Long deltaTillStart = 0l;
-		if (startTime != "-1") {
+		if (startTime != null) {
 			try {
 				deltaTillStart = Math.max(0, format.parse(startTime).getTime() - (new Date().getTime()));
 			} catch (ParseException e) {
@@ -94,7 +94,7 @@ public class PeriodicNotificationScheduler implements AutoCloseable {
 				deltaTillStart, period);
 
 		Long deltaTillStop = 0l;
-		if (stopTime != "-1") {
+		if (stopTime != null) {
 			try {
 				deltaTillStop = Math.max(0, format.parse(stopTime).getTime() - (new Date().getTime()));
 			} catch (ParseException e) {

@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 /**
  * This class serves as listener for changes in md-sal data store and as
  * scheduler at the same time. Triggering on change notifications in the
- * notification engine on changes.
+ * {@link NotificationEngine} on changes.
  * 
  * @author Dario.Schwarzbach
  *
@@ -92,23 +92,25 @@ public class OnChangeHandler implements AutoCloseable, DOMDataChangeListener {
 
 	@Override
 	public void onDataChanged(AsyncDataChangeEvent<YangInstanceIdentifier, NormalizedNode<?, ?>> change) {
+		LOG.info("Noticed changed data for subscription {}", subscriptionID);
 		Long currentTime = new Date().getTime();
 		if (currentTime >= timeOfLastUpdate + dampeningPeriod) {
+			LOG.info("Dampening period of {} over...next update will be triggered", dampeningPeriod);
 			if (change.getCreatedData().containsKey(yid)) {
 				if (change.getCreatedData().get(yid) instanceof NormalizedNode<?, ?>) {
+					LOG.info("On change notification for subscription {} triggered with created data: {}",
+							subscriptionID, change.getCreatedData().get(yid));
 					NotificationEngine.getInstance().onChangeNotification(subscriptionID,
 							change.getCreatedData().get(yid));
 					timeOfLastUpdate = new Date().getTime();
-					LOG.info("On change notification for subscription {} triggered with created data: {}",
-							subscriptionID, change.getCreatedData().get(yid));
 				}
 			} else if (change.getUpdatedData().containsKey(yid)) {
 				if (change.getUpdatedData().get(yid) instanceof NormalizedNode<?, ?>) {
+					LOG.info("On change notification for subscription {} triggered with updated data: {}",
+							subscriptionID, change.getUpdatedData().get(yid));
 					NotificationEngine.getInstance().onChangeNotification(subscriptionID,
 							change.getUpdatedData().get(yid));
 					timeOfLastUpdate = new Date().getTime();
-					LOG.info("On change notification for subscription {} triggered with updated data: {}",
-							subscriptionID, change.getUpdatedData().get(yid));
 				}
 			}
 			// TODO Extra case for removed data?
@@ -138,6 +140,7 @@ public class OnChangeHandler implements AutoCloseable, DOMDataChangeListener {
 			// quietClose();
 			// }
 		}
+		LOG.info("Dampening period of {} not over yet...no update will be triggered", dampeningPeriod);
 	}
 
 	/**
@@ -183,7 +186,7 @@ public class OnChangeHandler implements AutoCloseable, DOMDataChangeListener {
 			}
 		};
 		Long deltaTillStart = 0l;
-		if (startTime != "-1") {
+		if (startTime != null) {
 			try {
 				deltaTillStart = Math.max(0, format.parse(startTime).getTime() - (new Date().getTime()));
 			} catch (ParseException e) {
@@ -195,7 +198,7 @@ public class OnChangeHandler implements AutoCloseable, DOMDataChangeListener {
 					subscriptionID, deltaTillStart, dampeningPeriod);
 		}
 		Long deltaTillStop = 0l;
-		if (stopTime != "-1") {
+		if (stopTime != null) {
 			try {
 				deltaTillStop = Math.max(0, format.parse(stopTime).getTime() - (new Date().getTime()));
 			} catch (ParseException e) {
@@ -205,7 +208,7 @@ public class OnChangeHandler implements AutoCloseable, DOMDataChangeListener {
 		}
 		if (deltaTillStop > 0) {
 			scheduler.schedule(new Runnable() {
-
+				
 				@Override
 				public void run() {
 					SubscriptionInfo subscription = SubscriptionEngine.getInstance().getSubscription(subscriptionID);

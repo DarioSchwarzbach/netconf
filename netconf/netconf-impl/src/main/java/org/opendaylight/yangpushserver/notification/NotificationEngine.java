@@ -26,6 +26,7 @@ import org.opendaylight.controller.md.sal.dom.api.DOMNotificationPublishService;
 import org.opendaylight.controller.md.sal.dom.api.DOMNotificationService;
 import org.opendaylight.netconf.impl.NetconfServerSession;
 import org.opendaylight.netconf.util.NetconfUtil;
+import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.Subscriptions;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.PushChangeUpdate;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.PushUpdate;
 import org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.NetworkTopology;
@@ -363,9 +364,10 @@ public class NotificationEngine {
 		String subStopTime = underlyingSubscription.getSubscriptionStopTime();
 		// TODO change all YIDs?
 		Long dampeningPeriod = underlyingSubscription.getDampeningPeriod();
-		boolean noSynchOnStart = underlyingSubscription.getNoSynchOnStart();
+//		boolean noSynchOnStart = underlyingSubscription.getNoSynchOnStart();
+		boolean noSynchOnStart = false;
 		OnChangeHandler handler = new OnChangeHandler(globalDomDataBroker, stream,
-				YangpushProvider.NETCONF_TOPO_YID);
+				YangInstanceIdentifier.builder().node(Subscriptions.QNAME).build());
 		handler.scheduleNotification(subscriptionID, subStartTime, subStopTime, dampeningPeriod, noSynchOnStart);
 		this.notificationListenerMap.put(subscriptionID, handler);
 		LOG.info("On change notification for subscription ID {} successfully registered", subscriptionID);
