@@ -98,7 +98,7 @@ public class SubscriptionEngine {
 
 	public String generateSubscriptionId() {
 		if (Integer.toString(sub_id).equals("-1")){
-			sub_id=0;
+			sub_id=1;
 			return Integer.toString(sub_id);
 		}
 		this.sub_id++;

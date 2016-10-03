@@ -240,9 +240,9 @@ public class RpcImpl implements DOMRpcImplementation {
 		SubscriptionInfo inputData = parseDeleteSubExternalRpcInput(input, error);
 		// parsing should have been 'ok'
 		LOG.info("Parsing complete");
-		LOG.trace("Delete Subscription parsed Input: " + inputData.toString());
+		LOG.info("Delete Subscription parsed Input: " + inputData.toString());
 		if (subscriptionEngine.checkIfSubscriptionExists(inputData.getSubscriptionId())) {
-			subscriptionEngine.updateMdSal(subscriptionInfo, operations.delete);
+			subscriptionEngine.updateMdSal(inputData, operations.delete);
 		} else {
 			LOG.error("No such subscription with this id.");
 			RpcError output = null;
@@ -273,20 +273,27 @@ public class RpcImpl implements DOMRpcImplementation {
 	private SubscriptionInfo parseDeleteSubExternalRpcInput(NormalizedNode<?, ?> input, String error) {
 		SubscriptionInfo dsri = new SubscriptionInfo();
 		ContainerNode conNode = null;
+
 		error = "";
 		if (input == null) {
 			error = Errors.printError(errors.input_error);
 			dsri = null;
 			return dsri;
 		}
+		// NodeIdentifier result = new NodeIdentifier(N_RESULT_NAME);
+		// NodeIdentifier subid = new NodeIdentifier(N_SUB_ID_NAME);
+		// ChoiceNode c1 = Builders.choiceBuilder().withNodeIdentifier(result)
+		// .withChild(ImmutableNodes.leafNode(subid, sidValue)).build();
 
 		if (input instanceof ContainerNode) {
-			conNode = (ContainerNode) input;
+			// AugmentationNode an = (AugmentationNode)
+			// conNode.getValue().iterator().next();
 			try {
+				conNode = (ContainerNode) input;
+				LOG.info("Whole node: " + conNode);
 				Set<QName> childNames = new HashSet<>();
 				AugmentationIdentifier ai = new AugmentationIdentifier(childNames);
 				Optional<DataContainerChild<? extends PathArgument, ?>> t = conNode.getChild(ai);
-
 				// Decode subscription-id
 				DataContainerChild<? extends PathArgument, ?> subIdNode = null;
 				NodeIdentifier sub_id = new NodeIdentifier(N_SUB_ID_NAME);
@@ -302,6 +309,18 @@ public class RpcImpl implements DOMRpcImplementation {
 				} else {
 					error = Errors.printError(errors.input_sub_id_error);
 				}
+				// NodeIdentifier result = new NodeIdentifier(N_RESULT_NAME);
+				// NodeIdentifier subId = new NodeIdentifier(N_SUB_ID_NAME);
+				// ChoiceNode c1 = (ChoiceNode) conNode.getChild(result).get();
+				// if (c1.getChild(subId).isPresent()) {
+				// DataContainerChild<? extends PathArgument, ?> c2 =
+				// c1.getChild(subId).get();
+				// if (c2.getValue() != null) {
+				// dsri.setSubscription_id((String) c2.getValue());
+				// LOG.info("Periode auf " + dsri.getPeriod() + " gesetzt");
+				// }
+				// }
+				LOG.info("Parsed subscription ID is: " + dsri.getSubscriptionId());
 				// Check for Errors
 				if (!error.equals("")) {
 					dsri = null;
@@ -402,11 +421,11 @@ public class RpcImpl implements DOMRpcImplementation {
 		// sent
 		if (inputData.getDampeningPeriod() != null) {
 			LOG.info("Register on-Change-Notifications");
-			// notificationEngine.registerOnChangeNotification(inputData.getSubscriptionId());
+			notificationEngine.registerOnChangeNotification(inputData.getSubscriptionId());
 
 		} else if (inputData.getPeriod() != null) {
 			LOG.info("Register periodic-Notifications");
-			// notificationEngine.registerPeriodicNotification(inputData.getSubscriptionId());
+			notificationEngine.registerPeriodicNotification(inputData.getSubscriptionId());
 
 		} else {
 			LOG.error("Wrong Subscription exists, neither on-Change nor periodic Subscription");
@@ -699,7 +718,7 @@ public class RpcImpl implements DOMRpcImplementation {
 				LOG.info("Parsing filter-type complete : " + esri.getFilter());
 				// Set the SubscriptionStreamStatus to inactive, as long as no
 				// Notification is sent to client
-				subscriptionInfo.setSubscriptionStreamStatus(SubscriptionStreamStatus.inactive);
+				esri.setSubscriptionStreamStatus(SubscriptionStreamStatus.inactive);
 				// Check if it is a modify subscription
 				if (!isEstablish) {
 					// Parse Subscription ID
