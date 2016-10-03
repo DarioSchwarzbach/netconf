@@ -151,7 +151,9 @@ public class SubscriptionEngine {
 		NodeIdentifier period = new NodeIdentifier(Y_PERIOD_NAME);
 		NodeIdentifier dampeningPeriod = new NodeIdentifier(Y_DAMPENING_PERIOD_NAME);
 
-		
+		if (type.equals(operations.delete)){
+			subscriptionInfo = this.getSubscription(subscriptionInfo.getSubscriptionId());
+		}
 		Long sidValue = Long.valueOf(subscriptionInfo.getSubscriptionId());
 		Short subPriorityValue = Short.valueOf(subscriptionInfo.getSubscriptionPriority());
 		Short dscpValue = Short.valueOf(subscriptionInfo.getDscp());
@@ -210,7 +212,7 @@ public class SubscriptionEngine {
 			break;
 		case delete:
 			if (checkIfSubscriptionExists(subscriptionInfo.getSubscriptionId())) {
-				// tx.delete(LogicalDatastoreType.CONFIGURATION, yid);
+				tx.delete(LogicalDatastoreType.OPERATIONAL, yid);
 				masterSubMap.remove(subscriptionInfo.getSubscriptionId(), subscriptionInfo);
 				LOG.info("Subscription has been deleted");
 			} else {
@@ -219,7 +221,7 @@ public class SubscriptionEngine {
 			break;
 		case modify:
 			if (checkIfSubscriptionExists(subscriptionInfo.getSubscriptionId())) {
-				// tx.merge(LogicalDatastoreType.CONFIGURATION, yid, men);
+				// tx.merge(LogicalDatastoreType.OPERATIONAL, yid, men);
 				masterSubMap.put(subscriptionInfo.getSubscriptionId(), subscriptionInfo);
 				LOG.info("Subscription modified...");
 			} else {
