@@ -427,7 +427,7 @@ public class RpcImpl implements DOMRpcImplementation {
 		// sent
 		if (inputData.getDampeningPeriod() != null) {
 			LOG.info("Register on-Change-Notifications");
-			notificationEngine.registerOnChangeNotification(inputData.getSubscriptionId());
+		    notificationEngine.registerOnChangeNotification(inputData.getSubscriptionId());
 
 		} else if (inputData.getPeriod() != null) {
 			LOG.info("Register periodic-Notifications");
