@@ -38,6 +38,7 @@ import org.opendaylight.yangpushserver.subscription.SubscriptionEngine;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine.operations;
 import org.opendaylight.yangpushserver.subscription.SubscriptionInfo;
 import org.opendaylight.yangpushserver.subscription.SubscriptionInfo.SubscriptionStreamStatus;
+import org.opendaylight.yangtools.util.SingletonSet;
 import org.opendaylight.yangtools.yang.common.QName;
 import org.opendaylight.yangtools.yang.common.RpcError;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.AugmentationIdentifier;
@@ -49,6 +50,8 @@ import org.opendaylight.yangtools.yang.data.api.schema.ChoiceNode;
 import org.opendaylight.yangtools.yang.data.api.schema.ContainerNode;
 import org.opendaylight.yangtools.yang.data.api.schema.DataContainerChild;
 import org.opendaylight.yangtools.yang.data.api.schema.LeafNode;
+import org.opendaylight.yangtools.yang.data.api.schema.LeafSetEntryNode;
+import org.opendaylight.yangtools.yang.data.api.schema.LeafSetNode;
 import org.opendaylight.yangtools.yang.data.api.schema.NormalizedNode;
 import org.opendaylight.yangtools.yang.data.impl.schema.Builders;
 import org.opendaylight.yangtools.yang.data.impl.schema.ImmutableNodes;
@@ -99,6 +102,9 @@ public class RpcImpl implements DOMRpcImplementation {
 
 	// QNames used to construct augment leafs present in
 	// ietf-yang-push
+
+	public static final QName Y_NO_SYNCH_ON_START_NAME = QName.create(YP_NS, YP_NS_DATE, "no-synch-on-start");
+	public static final QName Y_EXCLUDED_CHANGE_NAME = QName.create(YP_NS, YP_NS_DATE, "excluded-change");
 	public static final QName Y_DAMPENING_PERIOD_NAME = QName.create(YP_NS, YP_NS_DATE, "dampening-period");
 	public static final QName Y_PERIOD_NAME = QName.create(YP_NS, YP_NS_DATE, "period");
 	public static final QName Y_UPDATE_TRIGGER_NAME = QName.create(YP_NS, YP_NS_DATE, "update-trigger");
@@ -449,10 +455,12 @@ public class RpcImpl implements DOMRpcImplementation {
 		NodeIdentifier updateTrigger = new NodeIdentifier(Y_UPDATE_TRIGGER_NAME);
 		NodeIdentifier period = new NodeIdentifier(Y_PERIOD_NAME);
 		NodeIdentifier dampeningPeriod = new NodeIdentifier(Y_DAMPENING_PERIOD_NAME);
-
+		NodeIdentifier noSynchOnStart = new NodeIdentifier(Y_NO_SYNCH_ON_START_NAME);
+		NodeIdentifier exlcludedChange = new NodeIdentifier(Y_EXCLUDED_CHANGE_NAME);
+		
 		Long sidValue = Long.valueOf(sid);
 		Short subPriorityValue = Short.valueOf(subscriptionInfo.getSubscriptionPriority());
-		Short dscpValue = Short.valueOf(subscriptionInfo.getDscp());
+//		Short dscpValue = Short.valueOf(subscriptionInfo.getDscp());
 		ChoiceNode c1 = Builders.choiceBuilder().withNodeIdentifier(result)
 				.withChild(ImmutableNodes.leafNode(subid, sidValue)).build();
 		ChoiceNode c2 = null;
@@ -465,15 +473,14 @@ public class RpcImpl implements DOMRpcImplementation {
 		} else {
 			LOG.info("DP" + subscriptionInfo.getDampeningPeriod().toString());
 			c2 = Builders.choiceBuilder().withNodeIdentifier(updateTrigger)
+					.withChild(ImmutableNodes.leafNode(noSynchOnStart, null))					
 					.withChild(ImmutableNodes.leafNode(dampeningPeriod, subscriptionInfo.getDampeningPeriod())).build();
 		}
-		// ContainerNode subResult =
-		// Builders.containerBuilder().withNodeIdentifier(NodeIdentifier.create(Y_SUB_RESULT_NAME)).build();
-
+		// Creating final output node if sid is valid
 		if (!sid.equals("-1")) {
 			final ContainerNode cn = Builders.containerBuilder().withNodeIdentifier(N_ESTABLISH_SUB_OUTPUT)
 					.withChild(ImmutableNodes.leafNode(N_SUB_RESULT_NAME, "ok")).withChild(c2).withChild(c1)
-					.withChild(ImmutableNodes.leafNode(Y_DSCP_NAME, dscpValue))
+//					.withChild(ImmutableNodes.leafNode(Y_DSCP_NAME, dscpValue))
 					.withChild(ImmutableNodes.leafNode(Y_SUB_PRIORITY_NAME, subPriorityValue))
 					.withChild(ImmutableNodes.leafNode(Y_SUB_DEPENDENCY_NAME,
 							subscriptionInfo.getSubscriptionDependency()))
@@ -563,7 +570,7 @@ public class RpcImpl implements DOMRpcImplementation {
 				t = an.getChild(subStartTime);
 				if (t.isPresent()) {
 					subStartTimeNode = (LeafNode<?>) t.get();
-					if (subStartTimeNode.getValue().equals(null)) {
+					if (!(subStartTimeNode.getValue().equals(null))) {
 						if (!subStartTimeIsBeforeSystemTime(subStartTimeNode.getValue().toString())) {
 							esri.setSubscriptionStarTime(subStartTimeNode.getValue().toString());
 						} else {
@@ -585,7 +592,7 @@ public class RpcImpl implements DOMRpcImplementation {
 				t = an.getChild(subStopTime);
 				if (t.isPresent()) {
 					subStopTimeNode = (LeafNode<?>) t.get();
-					if (subStopTimeNode.getValue().equals(null)) {
+					if (!(subStopTimeNode.getValue().equals(null))) {
 						esri.setSubscriptionStopTime(subStopTimeNode.getValue().toString());
 					} else {
 						esri.setSubscriptionStopTime(null);
@@ -600,7 +607,7 @@ public class RpcImpl implements DOMRpcImplementation {
 				t = an.getChild(startTime);
 				if (t.isPresent()) {
 					startTimeNode = (LeafNode<?>) t.get();
-					if (startTimeNode.getValue().equals(null)) {
+					if (!(startTimeNode.getValue().equals(null))) {
 						esri.setStartTime(startTimeNode.getValue().toString());
 					} else {
 						esri.setStartTime(null);
@@ -615,7 +622,7 @@ public class RpcImpl implements DOMRpcImplementation {
 				t = an.getChild(stopTime);
 				if (t.isPresent()) {
 					stopTimeNode = (LeafNode<?>) t.get();
-					if (stopTimeNode.getValue().equals(null)) {
+					if (!(stopTimeNode.getValue().equals(null))) {
 						esri.setStopTime(stopTimeNode.getValue().toString());
 					} else {
 						esri.setStopTime(null);
@@ -630,17 +637,50 @@ public class RpcImpl implements DOMRpcImplementation {
 				NodeIdentifier dampeningPeriod = new NodeIdentifier(Y_DAMPENING_PERIOD_NAME);
 				ChoiceNode c1 = (ChoiceNode) an.getChild(updateTrigger).get();
 				if (c1.getChild(period).isPresent()) {
+					// VII a Parsing periodic
 					DataContainerChild<? extends PathArgument, ?> c2 = c1.getChild(period).get();
 					if (c2.getValue() != null) {
 						esri.setPeriod((Long) c2.getValue());
 						LOG.info("Periode auf " + esri.getPeriod() + " gesetzt");
 					}
 				} else if (c1.getChild(dampeningPeriod).isPresent()) {
+					// VII b Parsing on-Change
 					DataContainerChild<? extends PathArgument, ?> c2 = c1.getChild(dampeningPeriod).get();
 					if (c2.getValue() != null) {
 						esri.setDampeningPeriod((Long) c2.getValue());
 						LOG.info("Dampening Periode auf " + esri.getDampeningPeriod() + " gesetzt");
 					}
+					NodeIdentifier noSynchOnStart = new NodeIdentifier(Y_NO_SYNCH_ON_START_NAME);
+					t = c1.getChild(noSynchOnStart);
+					if (t.isPresent()) {
+						esri.setNoSynchOnStart(true);
+					} else {
+						esri.setNoSynchOnStart(false);
+					}
+					LOG.info("Parsing no-synch-on-start complete: " + esri.getNoSynchOnStart());
+					// excluded Change is not supported yet..
+					// DataContainerChild<? extends PathArgument, ?>
+					// excludedChangeNode = null;
+					// NodeIdentifier excludedChange = new
+					// NodeIdentifier(Y_EXCLUDED_CHANGE_NAME);
+					// t = c1.getChild(excludedChange);
+					// if (t.isPresent()) {
+					// LOG.info("t: "+t);
+					// excludedChangeNode = (LeafSetNode<?>) t.get();
+					// LOG.info("excludedChangeNode: "+excludedChangeNode);
+					// Set<LeafNode<?>> excludedChangeNode2 = null;
+					// excludedChangeNode2 = (Set<LeafNode<?>>)
+					// excludedChangeNode.getValue();
+					// LOG.info("excludedChangeNode2: "+excludedChangeNode);
+					// if (excludedChangeNode.getValue().equals(null)) {
+					// esri.setExcludedChange(excludedChangeNode.getValue().toString());
+					// } else {
+					// esri.setExcludedChange(null);
+					// }
+					// } else {
+					// esri.setExcludedChange(null);
+					// }
+					LOG.info("Parsing excluded-change complete : " + esri.getExcludedChange());
 				} else {
 					error = Errors.printError(errors.input_period_error);
 				}
@@ -897,104 +937,6 @@ public class RpcImpl implements DOMRpcImplementation {
 			break;
 		default:
 			break;
-		}
-		return cn;
-	}
-
-	/********************************
-	 * Section for GET-SUBSCRIPTION *
-	 ********************************/
-
-	private CheckedFuture<DOMRpcResult, DOMRpcException> getSubscriptionRpcHandler(NormalizedNode<?, ?> input) {
-		String error = "";
-		if (input.equals(null)) {
-			LOG.error(Errors.printError(errors.input_error));
-			return null;
-		}
-
-		LOG.info("Going to parse RPC input");
-		// Parse input arg
-		String subId = parseGetSubRpcInput(input, error);
-		// parsing should have been 'ok'
-		// LOG.trace(inputData.toString());
-		LOG.info("Parsing complete");
-		ContainerNode output = createGetSubOutput(subId);
-		return Futures.immediateCheckedFuture((DOMRpcResult) new DefaultDOMRpcResult(output));
-	}
-
-	private String parseGetSubRpcInput(NormalizedNode<?, ?> input, String error) {
-		ContainerNode conNode = null;
-		error = "";
-		if (input == null) {
-			error = Errors.printError(errors.input_error);
-			return null;
-		}
-		if (input instanceof ContainerNode) {
-			conNode = (ContainerNode) input;
-			try {
-				Set<QName> childNames = new HashSet<>();
-				AugmentationIdentifier ai = new AugmentationIdentifier(childNames);
-				Optional<DataContainerChild<? extends PathArgument, ?>> t = conNode.getChild(ai);
-				// Decode subscription-id
-				DataContainerChild<? extends PathArgument, ?> subIdNode = null;
-				NodeIdentifier sub_id = new NodeIdentifier(N_SUB_ID_NAME);
-				t = conNode.getChild(sub_id);
-				if (t.isPresent()) {
-					subIdNode = t.get();
-					if (subIdNode.getValue().equals(null) && subIdNode.getValue().toString() != "-1") {
-						return subIdNode.getValue().toString();
-					} else {
-						error = Errors.printError(errors.input_sub_id_error);
-					}
-				} else {
-					error = Errors.printError(errors.input_sub_id_error);
-				}
-				// Check for Errors
-				if (!error.equals("")) {
-					LOG.error(error);
-					return null;
-				}
-			} catch (Exception e) {
-				LOG.error(e.toString());
-			}
-		} else {
-			error = Errors.printError(errors.input_not_instance_of);
-			return null;
-		}
-		return null;
-	}
-
-	private ContainerNode createGetSubOutput(String subscriptionId) {
-		ContainerNode cn = null;
-		SubscriptionInfo subInfo = subscriptionEngine.getSubscription(subscriptionId);
-		if (!subInfo.getPeriod().equals(null)) {
-			cn = Builders.containerBuilder().withNodeIdentifier(N_ESTABLISH_SUB_OUTPUT)
-					.withChild(ImmutableNodes.leafNode(N_SUB_ID_NAME, subInfo.getSubscriptionId()))
-					.withChild(ImmutableNodes.leafNode(N_ENCODING_NAME, subInfo.getEncoding()))
-					.withChild(ImmutableNodes.leafNode(N_STREAM_NAME, subInfo.getStream()))
-					.withChild(ImmutableNodes.leafNode(Y_SUB_START_TIME_NAME, subInfo.getSubscriptionStartTime()))
-					.withChild(ImmutableNodes.leafNode(Y_SUB_STOP_TIME_NAME, subInfo.getSubscriptionStopTime()))
-					.withChild(ImmutableNodes.leafNode(N_START_TIME_NAME, subInfo.getStartTime()))
-					.withChild(ImmutableNodes.leafNode(N_STOP_TIME_NAME, subInfo.getStopTime()))
-					.withChild(ImmutableNodes.leafNode(N_UPDATE_FILTER_NAME, subInfo.getFilter()))
-					.withChild(ImmutableNodes.leafNode(Y_DSCP_NAME, subInfo.getDscp()))
-					.withChild(ImmutableNodes.leafNode(Y_SUB_PRIORITY_NAME, subInfo.getSubscriptionPriority()))
-					.withChild(ImmutableNodes.leafNode(Y_SUB_DEPENDENCY_NAME, subInfo.getSubscriptionDependency()))
-					.withChild(ImmutableNodes.leafNode(Y_PERIOD_NAME, subInfo.getPeriod())).build();
-		} else {
-			cn = Builders.containerBuilder().withNodeIdentifier(N_ESTABLISH_SUB_OUTPUT)
-					.withChild(ImmutableNodes.leafNode(N_SUB_ID_NAME, subInfo.getSubscriptionId()))
-					.withChild(ImmutableNodes.leafNode(N_ENCODING_NAME, subInfo.getEncoding()))
-					.withChild(ImmutableNodes.leafNode(N_STREAM_NAME, subInfo.getStream()))
-					.withChild(ImmutableNodes.leafNode(Y_SUB_START_TIME_NAME, subInfo.getSubscriptionStartTime()))
-					.withChild(ImmutableNodes.leafNode(Y_SUB_STOP_TIME_NAME, subInfo.getSubscriptionStopTime()))
-					.withChild(ImmutableNodes.leafNode(N_START_TIME_NAME, subInfo.getStartTime()))
-					.withChild(ImmutableNodes.leafNode(N_STOP_TIME_NAME, subInfo.getStopTime()))
-					.withChild(ImmutableNodes.leafNode(N_UPDATE_FILTER_NAME, subInfo.getFilter()))
-					.withChild(ImmutableNodes.leafNode(Y_DSCP_NAME, subInfo.getDscp()))
-					.withChild(ImmutableNodes.leafNode(Y_SUB_PRIORITY_NAME, subInfo.getSubscriptionPriority()))
-					.withChild(ImmutableNodes.leafNode(Y_SUB_DEPENDENCY_NAME, subInfo.getSubscriptionDependency()))
-					.withChild(ImmutableNodes.leafNode(Y_DAMPENING_PERIOD_NAME, subInfo.getDampeningPeriod())).build();
 		}
 		return cn;
 	}
