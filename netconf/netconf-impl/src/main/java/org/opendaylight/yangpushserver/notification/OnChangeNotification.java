@@ -10,6 +10,9 @@ package org.opendaylight.yangpushserver.notification;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import org.json.JSONObject;
+import org.json.XML;
+import org.opendaylight.controller.config.util.xml.XmlUtil;
 import org.opendaylight.netconf.api.NetconfMessage;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.PushChangeUpdate;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine;
@@ -21,8 +24,8 @@ import org.w3c.dom.Element;
 import com.google.common.base.Preconditions;
 
 /**
- * Special type of netconf message that wraps an on change YANG push notification
- * like defined in {@link PushChangeUpdate}.
+ * Special type of netconf message that wraps an on change YANG push
+ * notification like defined in {@link PushChangeUpdate}.
  * 
  * @author Dario.Schwarzbach
  *
@@ -77,7 +80,8 @@ public final class OnChangeNotification extends NetconfMessage {
 
 	/**
 	 * Wraps the previously to a XML {@link Document} transformed data into the
-	 * related netconf notification.
+	 * related netconf notification while supporting other encodings for the
+	 * content (XML, JSON).
 	 * 
 	 * @param notificationContent
 	 *            Previously transformed data
@@ -93,45 +97,81 @@ public final class OnChangeNotification extends NetconfMessage {
 		Preconditions.checkNotNull(eventTime);
 
 		LOG.info("Start wrapping content {} for on change notification of subscription with ID {}...",
-				PeriodicNotification.printDocument(notificationContent), subscriptionID);
+				XmlUtil.toString(notificationContent), subscriptionID);
+		String encoding = SubscriptionEngine.getInstance().getSubscription(subscriptionID).getEncoding();
 
-		final Element baseNotification = notificationContent.getDocumentElement();
-		final Element entireNotification = notificationContent
-				.createElementNS(PeriodicNotification.NOTIFICATION_NAMESPACE, PeriodicNotification.NOTIFICATION);
+		if (encoding.equals("encode-json")) {
+			LOG.info("Encoding content to JSON...");
+			final Document res = XmlUtil.newDocument();
+			final Element baseNotification = notificationContent.getDocumentElement();
+			final Element entireNotification = res.createElementNS(PeriodicNotification.NOTIFICATION_NAMESPACE,
+					PeriodicNotification.NOTIFICATION);
 
-		final Element eventTimeElement = notificationContent.createElement(PeriodicNotification.EVENT_TIME);
-		eventTimeElement
-				.setTextContent(getSerializedEventTime(eventTime, PeriodicNotification.RFC3339_DATE_FORMAT_BLUEPRINT));
-		entireNotification.appendChild(eventTimeElement);
+			final Element eventTimeElement = res.createElement(PeriodicNotification.EVENT_TIME);
+			eventTimeElement.setTextContent(
+					getSerializedEventTime(eventTime, PeriodicNotification.RFC3339_DATE_FORMAT_BLUEPRINT));
+			entireNotification.appendChild(eventTimeElement);
 
-		final Element pushChangeUpdate = notificationContent.createElementNS(PUSH_CHANGE_UPDATE_NAMESPACE,
-				PUSH_CHANGE_UPDATE);
-		final Element subID = notificationContent.createElement(PeriodicNotification.SUB_ID);
-		subID.setTextContent(subscriptionID);
-		pushChangeUpdate.appendChild(subID);
+			final Element pushChangeUpdate = res.createElementNS(PUSH_CHANGE_UPDATE_NAMESPACE, PUSH_CHANGE_UPDATE);
+			final Element subID = res.createElement(PeriodicNotification.SUB_ID);
+			subID.setTextContent(subscriptionID);
+			pushChangeUpdate.appendChild(subID);
 
-		final Element timeOfUpdate = notificationContent.createElement(PeriodicNotification.TIME_OF_UPDATE);
-		timeOfUpdate.setTextContent(
-				getSerializedEventTime(eventTime, PeriodicNotification.YANG_DATEANDTIME_FORMAT_BLUEPRINT));
-		pushChangeUpdate.appendChild(timeOfUpdate);
+			final Element timeOfUpdate = res.createElement(PeriodicNotification.TIME_OF_UPDATE);
+			timeOfUpdate.setTextContent(
+					getSerializedEventTime(eventTime, PeriodicNotification.YANG_DATEANDTIME_FORMAT_BLUEPRINT));
+			pushChangeUpdate.appendChild(timeOfUpdate);
 
-		final Element datastoreChange;
-		if (SubscriptionEngine.getInstance().getSubscription(subscriptionID).getEncoding().equals("encode-json")) {
-			datastoreChange = notificationContent.createElement(CHANGES_JSON);
+			final Element datastoreChange = res.createElement(CHANGES_JSON);
 
+			if (baseNotification != null) {
+				JSONObject xmlContentToJson = XML.toJSONObject(XmlUtil.toString(baseNotification));
+				datastoreChange.setTextContent(xmlContentToJson.toString(4));
+			}
+
+			pushChangeUpdate.appendChild(datastoreChange);
+			entireNotification.appendChild(pushChangeUpdate);
+
+			res.appendChild(entireNotification);
+			LOG.info("Content for on change notification for subscription {} successfully wrapped: {}", subscriptionID,
+					XmlUtil.toString(res));
+
+			return res;
 		} else {
-			datastoreChange = notificationContent.createElement(CHANGES_XML);
-		}
-		if (baseNotification != null) {
-			datastoreChange.appendChild(baseNotification);
-		}
-		pushChangeUpdate.appendChild(datastoreChange);
-		entireNotification.appendChild(pushChangeUpdate);
 
-		notificationContent.appendChild(entireNotification);
-		LOG.info("Content for on change notification for subscription {} successfully wrapped: {}", subscriptionID,
-				PeriodicNotification.printDocument(notificationContent));
-		return notificationContent;
+			final Element baseNotification = notificationContent.getDocumentElement();
+			final Element entireNotification = notificationContent
+					.createElementNS(PeriodicNotification.NOTIFICATION_NAMESPACE, PeriodicNotification.NOTIFICATION);
+
+			final Element eventTimeElement = notificationContent.createElement(PeriodicNotification.EVENT_TIME);
+			eventTimeElement.setTextContent(
+					getSerializedEventTime(eventTime, PeriodicNotification.RFC3339_DATE_FORMAT_BLUEPRINT));
+			entireNotification.appendChild(eventTimeElement);
+
+			final Element pushChangeUpdate = notificationContent.createElementNS(PUSH_CHANGE_UPDATE_NAMESPACE,
+					PUSH_CHANGE_UPDATE);
+			final Element subID = notificationContent.createElement(PeriodicNotification.SUB_ID);
+			subID.setTextContent(subscriptionID);
+			pushChangeUpdate.appendChild(subID);
+
+			final Element timeOfUpdate = notificationContent.createElement(PeriodicNotification.TIME_OF_UPDATE);
+			timeOfUpdate.setTextContent(
+					getSerializedEventTime(eventTime, PeriodicNotification.YANG_DATEANDTIME_FORMAT_BLUEPRINT));
+			pushChangeUpdate.appendChild(timeOfUpdate);
+
+			final Element datastoreChange = notificationContent.createElement(CHANGES_XML);
+			
+			if (baseNotification != null) {
+				datastoreChange.appendChild(baseNotification);
+			}
+			pushChangeUpdate.appendChild(datastoreChange);
+			entireNotification.appendChild(pushChangeUpdate);
+
+			notificationContent.appendChild(entireNotification);
+			LOG.info("Content for on change notification for subscription {} successfully wrapped: {}", subscriptionID,
+					XmlUtil.toString(notificationContent));
+			return notificationContent;
+		}
 	}
 
 	private static String getSerializedEventTime(final Date eventTime, String pattern) {

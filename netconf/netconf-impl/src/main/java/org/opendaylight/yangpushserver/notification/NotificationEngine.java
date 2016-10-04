@@ -24,7 +24,6 @@ import org.opendaylight.controller.md.sal.dom.api.DOMDataReadTransaction;
 import org.opendaylight.controller.md.sal.dom.api.DOMDataWriteTransaction;
 import org.opendaylight.controller.md.sal.dom.api.DOMNotificationPublishService;
 import org.opendaylight.controller.md.sal.dom.api.DOMNotificationService;
-import org.opendaylight.netconf.impl.NetconfServerSession;
 import org.opendaylight.netconf.util.NetconfUtil;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.Subscriptions;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.PushChangeUpdate;
@@ -33,7 +32,6 @@ import org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.
 import org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.network.topology.Topology;
 import org.opendaylight.yangpushserver.impl.YangpushProvider;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine;
-import org.opendaylight.yangpushserver.subscription.SubscriptionEngine.operations;
 import org.opendaylight.yangpushserver.subscription.SubscriptionInfo;
 import org.opendaylight.yangpushserver.subscription.SubscriptionInfo.SubscriptionStreamStatus;
 import org.opendaylight.yangtools.yang.common.QName;
@@ -187,16 +185,6 @@ public class NotificationEngine {
 			// TODO Correct type when SubEngine is adapted?
 			String stream = underlyingSub.getStream();
 
-			// As alternative two ways to get a instance identifier: First via
-			// builder to a generic stream, second via create and key to some
-			// specific stream. Requires DataBroker and ReadOnlyTransaction.
-			// InstanceIdentifier<Stream> iid =
-			// InstanceIdentifier.builder(Netconf.class).child(Streams.class)
-			// .child(Stream.class).build();
-			// InstanceIdentifier<Stream> iid =
-			// InstanceIdentifier.create(Netconf.class).child(Streams.class)
-			// .child(Stream.class, new StreamKey("test"));
-
 			// TODO Maybe identify data (as node) with filters before reading to
 			// make data store access smaller.
 			// YangInstanceIdentifier yid =
@@ -217,20 +205,17 @@ public class NotificationEngine {
 
 			case "NETCONF":
 				LOG.info("MARKER5");
-				future = readTransaction.read(LogicalDatastoreType.OPERATIONAL,
-						YangpushProvider.NETCONF_TOPO_YID);
+				future = readTransaction.read(LogicalDatastoreType.OPERATIONAL, YangpushProvider.NETCONF_TOPO_YID);
 				break;
 			case "CONFIGURATION":
 				LOG.info("MARKER6");
 
-				future = readTransaction.read(LogicalDatastoreType.CONFIGURATION,
-						YangpushProvider.NETCONF_TOPO_YID);
+				future = readTransaction.read(LogicalDatastoreType.CONFIGURATION, YangpushProvider.NETCONF_TOPO_YID);
 				break;
 			case "OPERATIONAL":
 				LOG.info("MARKER7");
 
-				future = readTransaction.read(LogicalDatastoreType.OPERATIONAL,
-						YangpushProvider.NETCONF_TOPO_YID);
+				future = readTransaction.read(LogicalDatastoreType.OPERATIONAL, YangpushProvider.NETCONF_TOPO_YID);
 				break;
 			default:
 				LOG.error("Stream {} not supported.", stream);
@@ -254,14 +239,7 @@ public class NotificationEngine {
 			} catch (ReadFailedException e) {
 				LOG.warn("Reading data for notification failed:", e);
 			}
-			// As alternative to the PeriodicNotification class extending
-			// NetconfMessage class
-			// you could use DOMNotification and DOMNotificationPublishService
-			// what
-			// might be a more generic approach
 
-			// ContainerNode cn =
-			// Builders.containerBuilder().withNodeIdentifier(PERIODIC_NOTIFICATION_NI).addChild(data);
 			LOG.info("MARKER11");
 			DOMResult result = new DOMResult();
 			LOG.info("MARKER12");
@@ -318,8 +296,9 @@ public class NotificationEngine {
 			// Looking for the session that initialized this subscription and
 			// sending notification
 			LOG.info("Sending on change notification for subscription with ID {}...", subscriptionID);
-//			NetconfServerSession session = (NetconfServerSession) provider.getNetconfSession(subscriptionID);
-//			session.sendMessage(notification);
+			// NetconfServerSession session = (NetconfServerSession)
+			// provider.getNetconfSession(subscriptionID);
+			// session.sendMessage(notification);
 			LOG.info("On change notification for subscription with ID {} sent over session {}", subscriptionID);
 
 		} else {
@@ -365,7 +344,7 @@ public class NotificationEngine {
 		String subStopTime = underlyingSubscription.getSubscriptionStopTime();
 		// TODO change all YIDs?
 		Long dampeningPeriod = underlyingSubscription.getDampeningPeriod();
-//		boolean noSynchOnStart = underlyingSubscription.getNoSynchOnStart();
+		// boolean noSynchOnStart = underlyingSubscription.getNoSynchOnStart();
 		boolean noSynchOnStart = false;
 		OnChangeHandler handler = new OnChangeHandler(globalDomDataBroker, stream,
 				YangInstanceIdentifier.builder().node(Subscriptions.QNAME).build());
