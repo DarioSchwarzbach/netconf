@@ -48,8 +48,9 @@ public class SubscriptionEngine {
 	public static final QName Y_UPDATE_TRIGGER_NAME = QName.create(YP_NS, YP_NS_DATE, "update-trigger");
 	public static final QName Y_SUB_DEPENDENCY_NAME = QName.create(YP_NS, YP_NS_DATE, "subscription-dependency");
 	public static final QName Y_SUB_PRIORITY_NAME = QName.create(YP_NS, YP_NS_DATE, "subscription-priority");
+	public static final QName Y_NO_SYNCH_ON_START_NAME = QName.create(YP_NS, YP_NS_DATE, "no-synch-on-start");
+	public static final QName Y_EXCLUDED_CHANGE_NAME = QName.create(YP_NS, YP_NS_DATE, "excluded-change");
 
-	
 	// global data broker
 	private DOMDataBroker globalDomDataBroker = null;
 	// self instance
@@ -97,8 +98,8 @@ public class SubscriptionEngine {
 	}
 
 	public String generateSubscriptionId() {
-		if (Integer.toString(sub_id).equals("-1")){
-			sub_id=1;
+		if (Integer.toString(sub_id).equals("-1")) {
+			sub_id = 1;
 			return Integer.toString(sub_id);
 		}
 		this.sub_id++;
@@ -150,15 +151,17 @@ public class SubscriptionEngine {
 		NodeIdentifier updateTrigger = new NodeIdentifier(Y_UPDATE_TRIGGER_NAME);
 		NodeIdentifier period = new NodeIdentifier(Y_PERIOD_NAME);
 		NodeIdentifier dampeningPeriod = new NodeIdentifier(Y_DAMPENING_PERIOD_NAME);
+		NodeIdentifier noSynchOnStart = new NodeIdentifier(Y_NO_SYNCH_ON_START_NAME);
+		NodeIdentifier exlcludedChange = new NodeIdentifier(Y_EXCLUDED_CHANGE_NAME);
 
-		if (type.equals(operations.delete)){
+		if (type.equals(operations.delete)) {
 			subscriptionInfo = this.getSubscription(subscriptionInfo.getSubscriptionId());
 		}
 		Long sidValue = Long.valueOf(subscriptionInfo.getSubscriptionId());
 		Short subPriorityValue = Short.valueOf(subscriptionInfo.getSubscriptionPriority());
 		Short dscpValue = Short.valueOf(subscriptionInfo.getDscp());
-//		ChoiceNode c1 = Builders.choiceBuilder().withNodeIdentifier(result)
-//				.withChild(ImmutableNodes.leafNode(subid, sidValue)).build();
+		// ChoiceNode c1 = Builders.choiceBuilder().withNodeIdentifier(result)
+		// .withChild(ImmutableNodes.leafNode(subid, sidValue)).build();
 		ChoiceNode c2 = null;
 
 		// Whether its periodic or on-Change the node must be built differently
@@ -168,10 +171,22 @@ public class SubscriptionEngine {
 					.withChild(ImmutableNodes.leafNode(period, subscriptionInfo.getPeriod())).build();
 		} else {
 			LOG.info("DP" + subscriptionInfo.getDampeningPeriod().toString());
-			c2 = Builders.choiceBuilder().withNodeIdentifier(updateTrigger)
-					.withChild(ImmutableNodes.leafNode(dampeningPeriod, subscriptionInfo.getDampeningPeriod())).build();
+			if (subscriptionInfo.getNoSynchOnStart()) {
+				c2 = Builders.choiceBuilder().withNodeIdentifier(updateTrigger)
+						.withChild(ImmutableNodes.leafNode(dampeningPeriod, subscriptionInfo.getDampeningPeriod()))
+						.withChild(ImmutableNodes.leafNode(noSynchOnStart, null))
+						// .withChild(ImmutableNodes.leafNode(exlcludedChange,
+						// subscriptionInfo.getExcludedChange()))
+						.build();
+			} else {
+				c2 = Builders.choiceBuilder().withNodeIdentifier(updateTrigger)
+						.withChild(ImmutableNodes.leafNode(dampeningPeriod, subscriptionInfo.getDampeningPeriod()))
+						// .withChild(ImmutableNodes.leafNode(exlcludedChange,
+						// subscriptionInfo.getExcludedChange()))
+						.build();
+			}
 		}
-		
+
 		YangInstanceIdentifier pid = YangInstanceIdentifier.builder().node(Subscriptions.QNAME).node(Subscription.QNAME)
 				.build();
 
@@ -182,14 +197,13 @@ public class SubscriptionEngine {
 		MapEntryNode men = ImmutableNodes.mapEntryBuilder().withNodeIdentifier(p)
 				// .withChild(ImmutableNodes.leafNode(updateTrigger,
 				// subscriptionInfo.getUpdateTrigger()))
-				.withChild(c2)
-				.withChild(ImmutableNodes.leafNode(stream, subscriptionInfo.getStream()))
+				.withChild(c2).withChild(ImmutableNodes.leafNode(stream, subscriptionInfo.getStream()))
 				.withChild(ImmutableNodes.leafNode(subStartTime, subscriptionInfo.getSubscriptionStartTime()))
 				.withChild(ImmutableNodes.leafNode(subStopTime, subscriptionInfo.getSubscriptionStopTime()))
 				.withChild(ImmutableNodes.leafNode(subPriority, subPriorityValue))
 				.withChild(ImmutableNodes.leafNode(subDependency, subscriptionInfo.getSubscriptionDependency()))
 				.withChild(ImmutableNodes.leafNode(dscp, dscpValue))
-				.withChild(ImmutableNodes.leafNode(startTime, subscriptionInfo.getStartTime()))					
+				.withChild(ImmutableNodes.leafNode(startTime, subscriptionInfo.getStartTime()))
 				.withChild(ImmutableNodes.leafNode(stopTime, subscriptionInfo.getStopTime()))
 				.withChild(ImmutableNodes.leafNode(encoding, subscriptionInfo.getEncoding())).build();
 

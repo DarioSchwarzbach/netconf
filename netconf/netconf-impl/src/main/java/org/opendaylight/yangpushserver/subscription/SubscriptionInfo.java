@@ -28,6 +28,7 @@ public final class SubscriptionInfo {
 	private DOMSource filter;
 	private Boolean noSynchOnStart;
 	public SubscriptionStreamStatus subscriptionStreamStatus;
+	private String excludedChange;
 	private static SubscriptionInfo instance = null;
 
 	// TODO Constructor should be private.
@@ -66,6 +67,14 @@ public final class SubscriptionInfo {
 		this.noSynchOnStart = noSynchOnStart;
 	}
 
+	public String getExcludedChange() {
+		return excludedChange;
+	}
+
+	public void setExcludedChange(String excludedChange) {
+		this.excludedChange = excludedChange;
+	}
+	
 	public String getDscp() {
 		return dscp;
 	}
