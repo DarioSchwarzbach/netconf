@@ -10,6 +10,7 @@ package org.opendaylight.yangpushserver.notification;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import org.opendaylight.controller.config.util.xml.XmlUtil;
 import org.opendaylight.netconf.api.NetconfMessage;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.PushChangeUpdate;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine;
@@ -102,7 +103,7 @@ public final class OAMNotification extends NetconfMessage {
 		Preconditions.checkNotNull(eventTime);
 
 		LOG.info("Start wrapping content {} for on change notification of subscription with ID {}...",
-				PeriodicNotification.printDocument(notificationContent), subscriptionID);
+				XmlUtil.toString(notificationContent), subscriptionID);
 
 		final Element baseNotification = notificationContent.getDocumentElement();
 		final Element entireNotification = notificationContent
@@ -139,7 +140,7 @@ public final class OAMNotification extends NetconfMessage {
 
 		notificationContent.appendChild(entireNotification);
 		LOG.info("Content for on change notification for subscription {} successfully wrapped: {}", subscriptionID,
-				PeriodicNotification.printDocument(notificationContent));
+				XmlUtil.toString(notificationContent));
 		return notificationContent;
 	}
 

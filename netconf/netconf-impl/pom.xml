@@ -41,6 +41,10 @@
       <artifactId>ietf-topology</artifactId>
       <version>2013.10.21.7.5-SNAPSHOT</version>
     </dependency>
+    <dependency>
+      <groupId>org.json</groupId>
+      <artifactId>json</artifactId>
+    </dependency>
     <!-- new dependencies -->
     <dependency>
       <groupId>${project.groupId}</groupId>

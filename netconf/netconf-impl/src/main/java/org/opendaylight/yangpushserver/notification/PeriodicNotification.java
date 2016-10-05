@@ -7,18 +7,12 @@
  */
 package org.opendaylight.yangpushserver.notification;
 
-import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerConfigurationException;
-import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-
+import org.json.JSONObject;
+import org.json.XML;
+import org.opendaylight.controller.config.util.xml.XmlUtil;
 import org.opendaylight.netconf.api.NetconfMessage;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.PushUpdate;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine;
@@ -92,40 +86,9 @@ public final class PeriodicNotification extends NetconfMessage {
 	}
 
 	/**
-	 * Intended for test purpose only! Prints a {@link Document} as XML String.
-	 * 
-	 * @param doc
-	 *            The document that should be printed
-	 */
-	public static String printDocument(Document doc) {
-		StringWriter writer = new StringWriter();
-		TransformerFactory tf = TransformerFactory.newInstance();
-		Transformer transformer = null;
-		try {
-			transformer = tf.newTransformer();
-		} catch (TransformerConfigurationException e1) {
-			e1.printStackTrace();
-		}
-		transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "no");
-		transformer.setOutputProperty(OutputKeys.METHOD, "xml");
-		transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-		transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
-		transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
-		// Option with OutputSteam
-		// transformer.transform(new DOMSource(doc), new StreamResult(new
-		// OutputStreamWriter(out, "UTF-8")));
-		try {
-			transformer.transform(new DOMSource(doc), new StreamResult(writer));
-		} catch (TransformerException e) {
-			e.printStackTrace();
-		}
-		String strResult = writer.toString();
-		return strResult;
-	}
-
-	/**
 	 * Wraps the previously to a XML {@link Document} transformed data into the
-	 * related netconf notification.
+	 * related netconf notification while supporting other encodings for the
+	 * content (XML, JSON).
 	 * 
 	 * @param notificationContent
 	 *            Previously transformed data
@@ -141,42 +104,81 @@ public final class PeriodicNotification extends NetconfMessage {
 		Preconditions.checkNotNull(eventTime);
 
 		LOG.info("Start wrapping content {} for periodic notification of subscription with ID {}...",
-				printDocument(notificationContent), subscriptionID);
+				XmlUtil.toString(notificationContent), subscriptionID);
+		String encoding = SubscriptionEngine.getInstance().getSubscription(subscriptionID).getEncoding();
 
-		final Element baseNotification = notificationContent.getDocumentElement();
-		final Element entireNotification = notificationContent.createElementNS(NOTIFICATION_NAMESPACE, NOTIFICATION);
+		if (encoding.equals("encode-json")) {
+			LOG.info("Encoding content to JSON...");
+			final Document res = XmlUtil.newDocument();
+			final Element baseNotification = notificationContent.getDocumentElement();
+			final Element entireNotification = res.createElementNS(NOTIFICATION_NAMESPACE, NOTIFICATION);
 
-		final Element eventTimeElement = notificationContent.createElement(EVENT_TIME);
-		eventTimeElement.setTextContent(getSerializedEventTime(eventTime, RFC3339_DATE_FORMAT_BLUEPRINT));
-		entireNotification.appendChild(eventTimeElement);
+			final Element eventTimeElement = res.createElement(EVENT_TIME);
+			eventTimeElement.setTextContent(getSerializedEventTime(eventTime, RFC3339_DATE_FORMAT_BLUEPRINT));
+			entireNotification.appendChild(eventTimeElement);
 
-		final Element pushUpdate = notificationContent.createElementNS(PUSH_UPDATE_NAMESPACE, PUSH_UPDATE);
-		final Element subID = notificationContent.createElement(SUB_ID);
-		subID.setTextContent(subscriptionID);
-		pushUpdate.appendChild(subID);
+			final Element pushUpdate = res.createElementNS(PUSH_UPDATE_NAMESPACE, PUSH_UPDATE);
+			final Element subID = res.createElement(SUB_ID);
+			subID.setTextContent(subscriptionID);
+			pushUpdate.appendChild(subID);
 
-		final Element timeOfUpdate = notificationContent.createElement(TIME_OF_UPDATE);
-		timeOfUpdate.setTextContent(getSerializedEventTime(eventTime, YANG_DATEANDTIME_FORMAT_BLUEPRINT));
-		pushUpdate.appendChild(timeOfUpdate);
+			final Element timeOfUpdate = res.createElement(TIME_OF_UPDATE);
+			timeOfUpdate.setTextContent(getSerializedEventTime(eventTime, YANG_DATEANDTIME_FORMAT_BLUEPRINT));
+			pushUpdate.appendChild(timeOfUpdate);
 
-		final Element datastoreContent;
-		if (SubscriptionEngine.getInstance().getSubscription(subscriptionID).getEncoding().equals("encode-json")) {
-			datastoreContent = notificationContent.createElement(CONTENT_JSON);
+			final Element datastoreContent = res.createElement(CONTENT_JSON);
 
+			if (baseNotification != null) {
+				JSONObject xmlContentToJson = XML.toJSONObject(XmlUtil.toString(baseNotification));
+				datastoreContent.setTextContent(xmlContentToJson.toString(4));
+			}
+
+			pushUpdate.appendChild(datastoreContent);
+			entireNotification.appendChild(pushUpdate);
+
+			res.appendChild(entireNotification);
+			LOG.info("Content for periodic notification for subscription {} successfully wrapped: {}", subscriptionID,
+					XmlUtil.toString(res));
+
+			return res;
 		} else {
-			datastoreContent = notificationContent.createElement(CONTENT_XML);
-		}
-		if (baseNotification != null) {
-			datastoreContent.appendChild(baseNotification);
-		}
-		pushUpdate.appendChild(datastoreContent);
-		entireNotification.appendChild(pushUpdate);
+			LOG.info("Encoding content to XML...");
+			final Element baseNotification = notificationContent.getDocumentElement();
+			final Element entireNotification = notificationContent.createElementNS(NOTIFICATION_NAMESPACE,
+					NOTIFICATION);
 
-		notificationContent.appendChild(entireNotification);
-		LOG.info("Content for periodic notification for subscription {} successfully wrapped: {}", subscriptionID,
-				printDocument(notificationContent));
+			final Element eventTimeElement = notificationContent.createElement(EVENT_TIME);
+			eventTimeElement.setTextContent(getSerializedEventTime(eventTime, RFC3339_DATE_FORMAT_BLUEPRINT));
+			entireNotification.appendChild(eventTimeElement);
 
-		return notificationContent;
+			final Element pushUpdate = notificationContent.createElementNS(PUSH_UPDATE_NAMESPACE, PUSH_UPDATE);
+			final Element subID = notificationContent.createElement(SUB_ID);
+			subID.setTextContent(subscriptionID);
+			pushUpdate.appendChild(subID);
+
+			final Element timeOfUpdate = notificationContent.createElement(TIME_OF_UPDATE);
+			timeOfUpdate.setTextContent(getSerializedEventTime(eventTime, YANG_DATEANDTIME_FORMAT_BLUEPRINT));
+			pushUpdate.appendChild(timeOfUpdate);
+
+			final Element datastoreContent;
+			if (SubscriptionEngine.getInstance().getSubscription(subscriptionID).getEncoding().equals("encode-json")) {
+				datastoreContent = notificationContent.createElement(CONTENT_JSON);
+
+			} else {
+				datastoreContent = notificationContent.createElement(CONTENT_XML);
+			}
+			if (baseNotification != null) {
+				datastoreContent.appendChild(baseNotification);
+			}
+			pushUpdate.appendChild(datastoreContent);
+			entireNotification.appendChild(pushUpdate);
+
+			notificationContent.appendChild(entireNotification);
+			LOG.info("Content for periodic notification for subscription {} successfully wrapped: {}", subscriptionID,
+					XmlUtil.toString(notificationContent));
+
+			return notificationContent;
+		}
 	}
 
 	private static String getSerializedEventTime(final Date eventTime, String pattern) {
