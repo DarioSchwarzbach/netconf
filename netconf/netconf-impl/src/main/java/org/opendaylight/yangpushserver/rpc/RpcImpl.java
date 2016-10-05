@@ -16,6 +16,7 @@ import java.util.Set;
 
 import javax.xml.transform.dom.DOMSource;
 
+import org.opendaylight.controller.config.util.xml.XmlElement;
 import org.opendaylight.controller.md.sal.dom.api.DOMDataBroker;
 import org.opendaylight.controller.md.sal.dom.api.DOMRpcException;
 import org.opendaylight.controller.md.sal.dom.api.DOMRpcIdentifier;
@@ -38,7 +39,6 @@ import org.opendaylight.yangpushserver.subscription.SubscriptionEngine;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine.operations;
 import org.opendaylight.yangpushserver.subscription.SubscriptionInfo;
 import org.opendaylight.yangpushserver.subscription.SubscriptionInfo.SubscriptionStreamStatus;
-import org.opendaylight.yangtools.util.SingletonSet;
 import org.opendaylight.yangtools.yang.common.QName;
 import org.opendaylight.yangtools.yang.common.RpcError;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.AugmentationIdentifier;
@@ -50,8 +50,6 @@ import org.opendaylight.yangtools.yang.data.api.schema.ChoiceNode;
 import org.opendaylight.yangtools.yang.data.api.schema.ContainerNode;
 import org.opendaylight.yangtools.yang.data.api.schema.DataContainerChild;
 import org.opendaylight.yangtools.yang.data.api.schema.LeafNode;
-import org.opendaylight.yangtools.yang.data.api.schema.LeafSetEntryNode;
-import org.opendaylight.yangtools.yang.data.api.schema.LeafSetNode;
 import org.opendaylight.yangtools.yang.data.api.schema.NormalizedNode;
 import org.opendaylight.yangtools.yang.data.impl.schema.Builders;
 import org.opendaylight.yangtools.yang.data.impl.schema.ImmutableNodes;
@@ -427,7 +425,7 @@ public class RpcImpl implements DOMRpcImplementation {
 		// sent
 		if (inputData.getDampeningPeriod() != null) {
 			LOG.info("Register on-Change-Notifications");
-		    notificationEngine.registerOnChangeNotification(inputData.getSubscriptionId());
+			notificationEngine.registerOnChangeNotification(inputData.getSubscriptionId());
 
 		} else if (inputData.getPeriod() != null) {
 			LOG.info("Register periodic-Notifications");
@@ -457,10 +455,10 @@ public class RpcImpl implements DOMRpcImplementation {
 		NodeIdentifier dampeningPeriod = new NodeIdentifier(Y_DAMPENING_PERIOD_NAME);
 		NodeIdentifier noSynchOnStart = new NodeIdentifier(Y_NO_SYNCH_ON_START_NAME);
 		NodeIdentifier exlcludedChange = new NodeIdentifier(Y_EXCLUDED_CHANGE_NAME);
-		
+
 		Long sidValue = Long.valueOf(sid);
 		Short subPriorityValue = Short.valueOf(subscriptionInfo.getSubscriptionPriority());
-//		Short dscpValue = Short.valueOf(subscriptionInfo.getDscp());
+		// Short dscpValue = Short.valueOf(subscriptionInfo.getDscp());
 		ChoiceNode c1 = Builders.choiceBuilder().withNodeIdentifier(result)
 				.withChild(ImmutableNodes.leafNode(subid, sidValue)).build();
 		ChoiceNode c2 = null;
@@ -473,14 +471,15 @@ public class RpcImpl implements DOMRpcImplementation {
 		} else {
 			LOG.info("DP" + subscriptionInfo.getDampeningPeriod().toString());
 			c2 = Builders.choiceBuilder().withNodeIdentifier(updateTrigger)
-					.withChild(ImmutableNodes.leafNode(noSynchOnStart, null))					
+					.withChild(ImmutableNodes.leafNode(noSynchOnStart, null))
 					.withChild(ImmutableNodes.leafNode(dampeningPeriod, subscriptionInfo.getDampeningPeriod())).build();
 		}
 		// Creating final output node if sid is valid
 		if (!sid.equals("-1")) {
 			final ContainerNode cn = Builders.containerBuilder().withNodeIdentifier(N_ESTABLISH_SUB_OUTPUT)
 					.withChild(ImmutableNodes.leafNode(N_SUB_RESULT_NAME, "ok")).withChild(c2).withChild(c1)
-//					.withChild(ImmutableNodes.leafNode(Y_DSCP_NAME, dscpValue))
+					// .withChild(ImmutableNodes.leafNode(Y_DSCP_NAME,
+					// dscpValue))
 					.withChild(ImmutableNodes.leafNode(Y_SUB_PRIORITY_NAME, subPriorityValue))
 					.withChild(ImmutableNodes.leafNode(Y_SUB_DEPENDENCY_NAME,
 							subscriptionInfo.getSubscriptionDependency()))
@@ -558,16 +557,22 @@ public class RpcImpl implements DOMRpcImplementation {
 					if (streamNode.getValue() != null) {
 						esri.setStream(streamNode.getValue().toString().split("\\)")[1]);
 					} else {
-						esri.setStream("NETCONF");
+						esri.setStream("YANG-PUSH");
 					}
 				} else {
-					esri.setStream("NETCONF");
+					esri.setStream("YANG-PUSH");
 				}
 				LOG.info("Parsing stream complete : " + esri.getStream());
 				// III Parse sub-start-time
 				DataContainerChild<? extends PathArgument, ?> subStartTimeNode = null;
 				NodeIdentifier subStartTime = new NodeIdentifier(Y_SUB_START_TIME_NAME);
 				t = an.getChild(subStartTime);
+				// TODO Use date instead of dateFuture for further work.
+				// DateFuture was needed for a special version of ncclient.
+				Date date = new Date();
+				Long timeFuture = date.getTime() + 5000;
+				Date dateFuture = new Date(timeFuture);
+				// Remove timeFuture and dateFuture...
 				if (t.isPresent()) {
 					subStartTimeNode = (LeafNode<?>) t.get();
 					if (!(subStartTimeNode.getValue().equals(null))) {
@@ -575,15 +580,15 @@ public class RpcImpl implements DOMRpcImplementation {
 							esri.setSubscriptionStarTime(subStartTimeNode.getValue().toString());
 						} else {
 							esri.setSubscriptionStarTime(
-									new SimpleDateFormat(YANG_DATEANDTIME_FORMAT_BLUEPRINT).format(new Date()));
+									new SimpleDateFormat(YANG_DATEANDTIME_FORMAT_BLUEPRINT).format(dateFuture));
 						}
 					} else {
 						esri.setSubscriptionStarTime(
-								new SimpleDateFormat(YANG_DATEANDTIME_FORMAT_BLUEPRINT).format(new Date()));
+								new SimpleDateFormat(YANG_DATEANDTIME_FORMAT_BLUEPRINT).format(dateFuture));
 					}
 				} else {
 					esri.setSubscriptionStarTime(
-							new SimpleDateFormat(YANG_DATEANDTIME_FORMAT_BLUEPRINT).format(new Date()));
+							new SimpleDateFormat(YANG_DATEANDTIME_FORMAT_BLUEPRINT).format(dateFuture));
 				}
 				LOG.info("Parsing sub-start-time complete : " + esri.getSubscriptionStartTime());
 				// IV Parse sub-stop-time
@@ -737,7 +742,7 @@ public class RpcImpl implements DOMRpcImplementation {
 					esri.setSubscriptionDependency("0");
 				}
 				LOG.info("Parsing sub-dependency complete : " + esri.getSubscriptionDependency());
-				// TODO Subtree namespaces, but xpath formatting
+				// TODO Check it
 				// XI Parse filter-type
 				NodeIdentifier filtertype = new NodeIdentifier(N_SUBTREE_FILTER_TYPE_NAME);
 				NodeIdentifier subtreeFilter = new NodeIdentifier(N_SUBTREE_FILTER_NAME);
@@ -750,7 +755,12 @@ public class RpcImpl implements DOMRpcImplementation {
 						org.w3c.dom.Document document = nodeFilter.getOwnerDocument();
 						document.renameNode(nodeFilter, NOTIFICATION_NS, "filter");
 						DOMSource domSource = anyXmlFilter.getValue();
+						org.w3c.dom.Node test = domSource.getNode();
+						String test2 = domSource.getSystemId();
+						String test3 = test.getNodeName();
 						esri.setFilter(domSource);
+//						XmlElement dataSrc = XmlElement.fromDomElement(domSource);
+						LOG.info("Test: " + test + "Test2: " + test2 + "Test3: " + test3);
 					} else {
 						LOG.error("Only subtree filter supported at the moment.");
 					}
@@ -777,9 +787,10 @@ public class RpcImpl implements DOMRpcImplementation {
 					}
 					LOG.info("Parsing subscription-id complete");
 				}
-				if (correctEstablishOrModifyInput(esri)) {
-					return esri;
-				}
+				// TODO Check if Input is corrrect:
+				// if (correctEstablishOrModifyInput(esri)) {
+				return esri;
+				// }
 			} catch (Exception e) {
 				LOG.error(e.toString());
 			}
@@ -810,12 +821,13 @@ public class RpcImpl implements DOMRpcImplementation {
 	// TODO check the input
 	private Boolean correctEstablishOrModifyInput(SubscriptionInfo esri) {
 		Boolean result = false;
-		if (!esri.getEncoding().equals("encode-xml")) {
-			LOG.error("Only encode-xml supported");
-			return result;
+		if (esri.getEncoding().equals("encode-xml")) {
+		} else if (esri.getEncoding().equals("encode-xml")) {
 		} else {
-			LOG.info("Correct encoding");
+			LOG.error("Wrong encoding");
+			return result;
 		}
+		LOG.info("Correct encoding");
 		// Comparison if start-time is before system time is proved while
 		// parsing
 		// Compare if sub-start-time is before sub-stop-time.
@@ -839,7 +851,7 @@ public class RpcImpl implements DOMRpcImplementation {
 		// Compare if stream is either NETCONF, OPERATIONAL or CONFIGURATION
 		switch (esri.getStream()) {
 
-		case "NETCONF":
+		case "YANG-PUSH":
 
 			break;
 		case "OPERATIONAL":
