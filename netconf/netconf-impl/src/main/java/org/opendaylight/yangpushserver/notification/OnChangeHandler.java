@@ -64,7 +64,7 @@ public class OnChangeHandler implements AutoCloseable, DOMDataChangeListener {
 	 *            Data broker the listener is registered to
 	 * @param stream
 	 *            Part of the md-sal data store we are listening on (e.g.
-	 *            NETCONF, CONFIGURATION,...)
+	 *            YANG-PUSH, CONFIGURATION,...)
 	 * @param yid
 	 *            Identifier for a specific node we want to listen on
 	 */
@@ -232,7 +232,7 @@ public class OnChangeHandler implements AutoCloseable, DOMDataChangeListener {
 	private void registerListeners() {
 		// TODO Correct type of stream?
 		switch (stream) {
-		case "NETCONF":
+		case "YANG-PUSH":
 			this.registration = db.registerDataChangeListener(LogicalDatastoreType.OPERATIONAL, yid, this,
 					DataChangeScope.BASE);
 //			this.registration = db.registerDataChangeListener(LogicalDatastoreType.CONFIGURATION, yid, this,
