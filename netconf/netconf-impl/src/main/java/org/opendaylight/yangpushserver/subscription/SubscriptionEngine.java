@@ -23,6 +23,7 @@ import org.opendaylight.yangtools.yang.common.QName;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.NodeIdentifier;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.NodeIdentifierWithPredicates;
+import org.opendaylight.yangtools.yang.data.api.schema.AnyXmlNode;
 import org.opendaylight.yangtools.yang.data.api.schema.ChoiceNode;
 import org.opendaylight.yangtools.yang.data.api.schema.ContainerNode;
 import org.opendaylight.yangtools.yang.data.api.schema.MapEntryNode;
@@ -42,6 +43,9 @@ public class SubscriptionEngine {
 	public static final String NOTIF_BIS = "urn:ietf:params:xml:ns:yang:ietf-event-notifications";
 	public static final String NOTIF_BIS_DATE = "2016-06-15";
 
+	public static final QName Y_UPDATE_FILTER_NAME = QName.create(YP_NS, YP_NS_DATE, "update-filter");
+	public static final QName N_SUBTREE_FILTER_TYPE_NAME = QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "filter-type");
+	public static final QName Y_SUBTREE_FILTER_NAME = QName.create(YP_NS, YP_NS_DATE, "subtree-filter");
 	public static final QName N_SUB_ID_NAME = QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "subscription-id");
 	public static final QName Y_DAMPENING_PERIOD_NAME = QName.create(YP_NS, YP_NS_DATE, "dampening-period");
 	public static final QName Y_PERIOD_NAME = QName.create(YP_NS, YP_NS_DATE, "period");
@@ -153,7 +157,11 @@ public class SubscriptionEngine {
 		NodeIdentifier dampeningPeriod = new NodeIdentifier(Y_DAMPENING_PERIOD_NAME);
 		NodeIdentifier noSynchOnStart = new NodeIdentifier(Y_NO_SYNCH_ON_START_NAME);
 		NodeIdentifier exlcludedChange = new NodeIdentifier(Y_EXCLUDED_CHANGE_NAME);
+		NodeIdentifier filtertype = new NodeIdentifier(N_SUBTREE_FILTER_TYPE_NAME);
+		NodeIdentifier subtreeFilter = new NodeIdentifier(Y_SUBTREE_FILTER_NAME);
+		NodeIdentifier updateFilter = new NodeIdentifier(Y_UPDATE_FILTER_NAME);
 
+		
 		if (type.equals(operations.delete)) {
 			subscriptionInfo = this.getSubscription(subscriptionInfo.getSubscriptionId());
 		}
@@ -163,7 +171,6 @@ public class SubscriptionEngine {
 		// ChoiceNode c1 = Builders.choiceBuilder().withNodeIdentifier(result)
 		// .withChild(ImmutableNodes.leafNode(subid, sidValue)).build();
 		ChoiceNode c2 = null;
-
 		// Whether its periodic or on-Change the node must be built differently
 		if (!(subscriptionInfo.getPeriod() == null)) {
 			LOG.info("Period" + subscriptionInfo.getPeriod().toString());
@@ -186,7 +193,6 @@ public class SubscriptionEngine {
 						.build();
 			}
 		}
-
 		YangInstanceIdentifier pid = YangInstanceIdentifier.builder().node(Subscriptions.QNAME).node(Subscription.QNAME)
 				.build();
 
@@ -194,18 +200,42 @@ public class SubscriptionEngine {
 				QName.create(Subscriptions.QNAME, "subscription"), QName.create(Subscriptions.QNAME, "subscription-id"),
 				sidValue);
 
-		MapEntryNode men = ImmutableNodes.mapEntryBuilder().withNodeIdentifier(p)
-				// .withChild(ImmutableNodes.leafNode(updateTrigger,
-				// subscriptionInfo.getUpdateTrigger()))
-				.withChild(c2).withChild(ImmutableNodes.leafNode(stream, subscriptionInfo.getStream()))
-				.withChild(ImmutableNodes.leafNode(subStartTime, subscriptionInfo.getSubscriptionStartTime()))
-				.withChild(ImmutableNodes.leafNode(subStopTime, subscriptionInfo.getSubscriptionStopTime()))
-				.withChild(ImmutableNodes.leafNode(subPriority, subPriorityValue))
-				.withChild(ImmutableNodes.leafNode(subDependency, subscriptionInfo.getSubscriptionDependency()))
-				.withChild(ImmutableNodes.leafNode(dscp, dscpValue))
-				.withChild(ImmutableNodes.leafNode(startTime, subscriptionInfo.getStartTime()))
-				.withChild(ImmutableNodes.leafNode(stopTime, subscriptionInfo.getStopTime()))
-				.withChild(ImmutableNodes.leafNode(encoding, subscriptionInfo.getEncoding())).build();
+		ChoiceNode c3 = null;
+		MapEntryNode men = null;
+		if (!(subscriptionInfo.getFilter() == null)) {
+			AnyXmlNode test = Builders.anyXmlBuilder().withNodeIdentifier(subtreeFilter).withValue(subscriptionInfo.getFilter()).build();
+			ChoiceNode c4 = Builders.choiceBuilder().withNodeIdentifier(updateFilter).withChild(test)
+					.build();
+			c3 = Builders.choiceBuilder().withChild(c4).withNodeIdentifier(filtertype)
+					.build();
+						
+			men = ImmutableNodes.mapEntryBuilder().withNodeIdentifier(p)
+					.withChild(c2)
+//					.withChild(c3)
+					.withChild(ImmutableNodes.leafNode(stream, subscriptionInfo.getStream()))
+					.withChild(ImmutableNodes.leafNode(subStartTime, subscriptionInfo.getSubscriptionStartTime()))
+					.withChild(ImmutableNodes.leafNode(subStopTime, subscriptionInfo.getSubscriptionStopTime()))
+					.withChild(ImmutableNodes.leafNode(subPriority, subPriorityValue))
+					.withChild(ImmutableNodes.leafNode(subDependency, subscriptionInfo.getSubscriptionDependency()))
+					.withChild(ImmutableNodes.leafNode(dscp, dscpValue))
+					.withChild(ImmutableNodes.leafNode(startTime, subscriptionInfo.getStartTime()))
+					.withChild(ImmutableNodes.leafNode(stopTime, subscriptionInfo.getStopTime()))
+					.withChild(ImmutableNodes.leafNode(encoding, subscriptionInfo.getEncoding())).build();
+		} else {
+			men = ImmutableNodes.mapEntryBuilder().withNodeIdentifier(p)
+					// .withChild(ImmutableNodes.leafNode(updateTrigger,
+					// subscriptionInfo.getUpdateTrigger()))
+					.withChild(c2).withChild(ImmutableNodes.leafNode(stream, subscriptionInfo.getStream()))
+					.withChild(ImmutableNodes.leafNode(subStartTime, subscriptionInfo.getSubscriptionStartTime()))
+					.withChild(ImmutableNodes.leafNode(subStopTime, subscriptionInfo.getSubscriptionStopTime()))
+					.withChild(ImmutableNodes.leafNode(subPriority, subPriorityValue))
+					.withChild(ImmutableNodes.leafNode(subDependency, subscriptionInfo.getSubscriptionDependency()))
+					.withChild(ImmutableNodes.leafNode(dscp, dscpValue))
+					.withChild(ImmutableNodes.leafNode(startTime, subscriptionInfo.getStartTime()))
+					.withChild(ImmutableNodes.leafNode(stopTime, subscriptionInfo.getStopTime()))
+					.withChild(ImmutableNodes.leafNode(encoding, subscriptionInfo.getEncoding())).build();
+		}
+		LOG.info("men: " + men);
 
 		DOMDataWriteTransaction tx = this.globalDomDataBroker.newWriteOnlyTransaction();
 		YangInstanceIdentifier yid = pid
