@@ -75,7 +75,7 @@ public class OnChangeHandler implements AutoCloseable, DOMDataTreeChangeListener
 	 */
 	public OnChangeHandler(DOMDataBroker db, String stream, YangInstanceIdentifier yid) {
 		super();
-		domDataTreeChangeService = (DOMDataTreeChangeService) db.getSupportedExtensions()
+		this.domDataTreeChangeService = (DOMDataTreeChangeService) db.getSupportedExtensions()
 				.get(DOMDataTreeChangeService.class);
 		this.stream = stream;
 		this.yid = yid;
@@ -116,13 +116,24 @@ public class OnChangeHandler implements AutoCloseable, DOMDataTreeChangeListener
 		DateFormat format = new SimpleDateFormat(PeriodicNotification.YANG_DATEANDTIME_FORMAT_BLUEPRINT);
 
 		this.subscriptionID = subscriptionID;
-		this.startTime = subStartTime;
-		this.stopTime = subStopTime;
+		this.startTime = PeriodicNotificationScheduler.ensureYangDateAndTimeFormat(subStartTime);
+		this.stopTime = PeriodicNotificationScheduler.ensureYangDateAndTimeFormat(subStopTime);
 		this.dampeningPeriod = dampeningPeriod;
 		this.timeOfLastUpdate = 0l;
 
+		// A push update notification is send previously to the push change
+		// updates to synch the subscriber with the current state of the data
+		// store.
 		if (!noSynchOnStart) {
-			NotificationEngine.getInstance().periodicNotification(subscriptionID);
+			SubscriptionStreamStatus status = SubscriptionEngine.getInstance().getSubscription(subscriptionID)
+					.getSubscriptionStreamStatus();
+			if (status == SubscriptionStreamStatus.inactive) {
+				SubscriptionEngine.getInstance().getSubscription(subscriptionID)
+						.setSubscriptionStreamStatus(SubscriptionStreamStatus.active);
+				NotificationEngine.getInstance().periodicNotification(subscriptionID);
+				SubscriptionEngine.getInstance().getSubscription(subscriptionID)
+						.setSubscriptionStreamStatus(SubscriptionStreamStatus.inactive);
+			}
 		}
 
 		final Runnable triggerAction = new Runnable() {
@@ -218,26 +229,32 @@ public class OnChangeHandler implements AutoCloseable, DOMDataTreeChangeListener
 		LOG.info("Noticed changed data for subscription {}", subscriptionID);
 		NotificationEngine notificationEngine = NotificationEngine.getInstance();
 		Long currentTime = new Date().getTime();
+
 		if (currentTime >= timeOfLastUpdate + dampeningPeriod) {
 			LOG.info("Dampening period of {} over...next update will be triggered", dampeningPeriod);
 			for (DataTreeCandidate change : changes) {
 				DataTreeCandidateNode rootNode = change.getRootNode();
 				if (rootNode.getModificationType() == ModificationType.WRITE) {
-					LOG.info("Noticed a {} for data", ModificationType.WRITE);
-
-					if (rootNode.getDataAfter() != null && rootNode.getDataAfter().isPresent()) {
-						notificationEngine.onChangeNotification(subscriptionID, rootNode.getDataAfter().get());
-					}
+					LOG.info("Noticed initial {} for data after registering listeners. No update will be send.",
+							ModificationType.WRITE);
+					// if (rootNode.getDataAfter() != null &&
+					// rootNode.getDataAfter().isPresent()) {
+					// timeOfLastUpdate = new Date().getTime();
+					// notificationEngine.onChangeNotification(subscriptionID,
+					// rootNode.getDataAfter().get());
+					// }
 				} else if (rootNode.getModificationType() == ModificationType.SUBTREE_MODIFIED) {
 					LOG.info("Noticed a {} for data", ModificationType.SUBTREE_MODIFIED);
 
 					if (rootNode.getDataAfter() != null && rootNode.getDataAfter().isPresent()) {
+						timeOfLastUpdate = new Date().getTime();
 						notificationEngine.onChangeNotification(subscriptionID, rootNode.getDataAfter().get());
 					}
 				} else if (rootNode.getModificationType() == ModificationType.DELETE) {
 					LOG.info("Noticed a {} for data", ModificationType.DELETE);
 
 					if (rootNode.getDataAfter() != null && rootNode.getDataAfter().isPresent()) {
+						timeOfLastUpdate = new Date().getTime();
 						notificationEngine.onChangeNotification(subscriptionID, rootNode.getDataAfter().get());
 					}
 				}

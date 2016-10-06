@@ -62,8 +62,8 @@ public class PeriodicNotificationScheduler implements AutoCloseable {
 		DateFormat format = new SimpleDateFormat(PeriodicNotification.YANG_DATEANDTIME_FORMAT_BLUEPRINT);
 
 		this.subscriptionID = subscriptionID;
-		this.startTime = subStartTime;
-		this.stopTime = subStopTime;
+		this.startTime = ensureYangDateAndTimeFormat(subStartTime);
+		this.stopTime = ensureYangDateAndTimeFormat(subStopTime);
 
 		final Runnable triggerAction = new Runnable() {
 			@Override
@@ -140,5 +140,24 @@ public class PeriodicNotificationScheduler implements AutoCloseable {
 		} catch (Exception e) {
 			throw new IllegalStateException("Unable to close ressources", e);
 		}
+	}
+
+	public static String ensureYangDateAndTimeFormat(String yangDateAndTime) {
+		if (yangDateAndTime != null) {
+			String newTime = yangDateAndTime;
+			if (yangDateAndTime.contains(".")) {
+				String newEnd = ".000";
+				newEnd += yangDateAndTime.substring(yangDateAndTime.indexOf(".") + 1, yangDateAndTime.indexOf(".") + 4);
+				newEnd += "Z";
+
+				newTime = yangDateAndTime.substring(0, yangDateAndTime.indexOf("."));
+				newTime += newEnd;
+			} else {
+				newTime = yangDateAndTime.substring(0, yangDateAndTime.indexOf("Z"));
+				newTime += ".000000Z";
+			}
+			return newTime;
+		}
+		return null;
 	}
 }

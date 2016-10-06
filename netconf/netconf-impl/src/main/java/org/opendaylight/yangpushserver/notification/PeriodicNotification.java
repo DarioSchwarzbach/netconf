@@ -42,6 +42,11 @@ public final class PeriodicNotification extends NetconfMessage {
 	public static final String CONTENT_XML = "datastore-contents-xml";
 	public static final String CONTENT_JSON = "datastore-contents-json";
 	public static final String RFC3339_DATE_FORMAT_BLUEPRINT = "yyyy-MM-dd'T'HH:mm:ss'Z'";
+	/**
+	 * Not the exact YANG DateAndTime format because java time formats do not
+	 * support microseconds. Instead incoming DateAndTime String will be cut
+	 * off.
+	 **/
 	public static final String YANG_DATEANDTIME_FORMAT_BLUEPRINT = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'";
 	public static final String EVENT_TIME = "eventTime";
 
