@@ -97,8 +97,7 @@ public class NotificationEngine {
 	}
 
 	/**
-	 * Set global BI data broker, notification service and notification
-	 * publisher to notification engine
+	 * Set global BI data broker to notification engine
 	 * 
 	 */
 	public void setDataBroker(DOMDataBroker globalDomDataBroker) {
@@ -106,7 +105,7 @@ public class NotificationEngine {
 	}
 
 	/**
-	 * Set global BI yang push server provider to notification engine
+	 * Set global BI yang push provider to notification engine
 	 * 
 	 */
 	public void setProvider(YangpushProvider provider) {
@@ -129,14 +128,7 @@ public class NotificationEngine {
 		// Dont do anything if suspended, stopped etc.
 		if (underlyingSub.getSubscriptionStreamStatus() == SubscriptionStreamStatus.active) {
 			LOG.info("Processing periodic notification for active subscription {}...", subscriptionID);
-			// TODO Correct type when SubEngine is adapted?
 			String stream = underlyingSub.getStream();
-
-			// TODO Maybe identify data (as node) with filters before reading to
-			// make data store access smaller.
-			// YangInstanceIdentifier yid =
-			// YangInstanceIdentifier.builder().node(Netconf.QNAME).node(Streams.QNAME)
-			// .node(Stream.QNAME).build();
 
 			// Preparations for read from data store TODO transactionChain?
 			DOMDataReadTransaction readTransaction = this.globalDomDataBroker.newReadOnlyTransaction();
@@ -164,8 +156,6 @@ public class NotificationEngine {
 
 				if (optional != null && optional.isPresent()) {
 					data = optional.get();
-					// Applying filters to the retrieved data.
-					applyFilter();
 
 					LOG.info("Data for periodic notification of subscription {} read successfully from data store: {}",
 							subscriptionID, data);
@@ -182,7 +172,7 @@ public class NotificationEngine {
 			} catch (IOException | XMLStreamException e) {
 				LOG.warn("Transforming normalized node to dom result failed:", e);
 			}
-
+			applyFilter(); // TODO
 			PeriodicNotification notification = new PeriodicNotification((Document) result.getNode(), subscriptionID);
 			// TODO Maybe move this part to the provider itself to later manage
 			// other transport options
@@ -222,7 +212,7 @@ public class NotificationEngine {
 			} catch (IOException | XMLStreamException e) {
 				LOG.warn("Transforming normalized node to dom result failed:", e);
 			}
-
+			applyFilter(); // TODO
 			OnChangeNotification notification = new OnChangeNotification((Document) result.getNode(), subscriptionID);
 			LOG.info("Sending on change notification for subscription with ID {}...", subscriptionID);
 			provider.pushNotification(notification);
@@ -265,14 +255,13 @@ public class NotificationEngine {
 	 */
 	public void registerOnChangeNotification(String subscriptionID) {
 		SubscriptionInfo underlyingSubscription = SubscriptionEngine.getInstance().getSubscription(subscriptionID);
+
 		String stream = underlyingSubscription.getStream();
-		// TODO More parameters?
 		String subStartTime = underlyingSubscription.getSubscriptionStartTime();
 		String subStopTime = underlyingSubscription.getSubscriptionStopTime();
-		// TODO change all YIDs?
 		Long dampeningPeriod = underlyingSubscription.getDampeningPeriod();
-		// boolean noSynchOnStart = underlyingSubscription.getNoSynchOnStart();
-		boolean noSynchOnStart = false;
+		boolean noSynchOnStart = underlyingSubscription.getNoSynchOnStart();
+
 		OnChangeHandler handler = new OnChangeHandler(globalDomDataBroker, stream, YangpushProvider.ROOT);
 		handler.scheduleNotification(subscriptionID, subStartTime, subStopTime, dampeningPeriod, noSynchOnStart);
 		this.notificationListenerMap.put(subscriptionID, handler);

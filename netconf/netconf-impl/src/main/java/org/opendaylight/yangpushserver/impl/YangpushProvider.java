@@ -18,12 +18,10 @@ import org.opendaylight.controller.sal.core.api.Broker.ProviderSession;
 import org.opendaylight.controller.sal.core.api.Provider;
 import org.opendaylight.netconf.api.NetconfMessage;
 import org.opendaylight.netconf.impl.NetconfServerSession;
-import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.netconf.monitoring.rev101004.NetconfState;
 import org.opendaylight.yangpushserver.notification.NotificationEngine;
 import org.opendaylight.yangpushserver.rpc.RpcImpl;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier;
-import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.InstanceIdentifierBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +61,7 @@ public class YangpushProvider implements Provider, AutoCloseable {
 	@Override
 	public void onSessionInitiated(ProviderSession session) {
 		serverSessions = new HashSet<>();
-		// get the DOM versions of MD-SAL services
+		// get the DOM version of MD-SAL services
 		this.globalDomDataBroker = session.getService(DOMDataBroker.class);
 
 		this.subEngine = SubscriptionEngine.getInstance();
@@ -78,10 +76,6 @@ public class YangpushProvider implements Provider, AutoCloseable {
 		ypServerRpcImpl = new RpcImpl(service, this.globalDomDataBroker);
 
 		LOG.info("YangpushProvider is registered.");
-
-		// this.globalDomDataBroker.registerDataChangeListener(LogicalDatastoreType.OPERATIONAL,
-		// nodeIid, this,
-		// AsyncDataBroker.DataChangeScope.SUBTREE);
 	}
 
 	@Override
