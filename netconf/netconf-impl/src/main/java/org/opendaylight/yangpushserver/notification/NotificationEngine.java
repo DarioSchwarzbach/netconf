@@ -18,35 +18,20 @@ import javax.xml.transform.dom.DOMResult;
 import org.opendaylight.controller.config.util.xml.XmlUtil;
 import org.opendaylight.controller.md.sal.common.api.data.LogicalDatastoreType;
 import org.opendaylight.controller.md.sal.common.api.data.ReadFailedException;
-import org.opendaylight.controller.md.sal.common.api.data.TransactionCommitFailedException;
 import org.opendaylight.controller.md.sal.dom.api.DOMDataBroker;
 import org.opendaylight.controller.md.sal.dom.api.DOMDataReadTransaction;
-import org.opendaylight.controller.md.sal.dom.api.DOMDataWriteTransaction;
-import org.opendaylight.controller.md.sal.dom.api.DOMNotificationPublishService;
-import org.opendaylight.controller.md.sal.dom.api.DOMNotificationService;
 import org.opendaylight.netconf.util.NetconfUtil;
-import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.Subscriptions;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.PushChangeUpdate;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.PushUpdate;
-import org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.NetworkTopology;
-import org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.network.topology.Topology;
 import org.opendaylight.yangpushserver.impl.YangpushProvider;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine;
 import org.opendaylight.yangpushserver.subscription.SubscriptionInfo;
 import org.opendaylight.yangpushserver.subscription.SubscriptionInfo.SubscriptionStreamStatus;
-import org.opendaylight.yangtools.yang.common.QName;
-import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.NodeIdentifier;
-import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.NodeIdentifierWithPredicates;
-import org.opendaylight.yangtools.yang.data.api.schema.ContainerNode;
-import org.opendaylight.yangtools.yang.data.api.schema.MapEntryNode;
-import org.opendaylight.yangtools.yang.data.api.schema.MapNode;
 import org.opendaylight.yangtools.yang.data.api.schema.NormalizedNode;
 import org.opendaylight.yangtools.yang.data.api.schema.stream.NormalizedNodeStreamWriter;
 import org.opendaylight.yangtools.yang.data.api.schema.stream.NormalizedNodeWriter;
 import org.opendaylight.yangtools.yang.data.impl.codec.xml.XMLStreamNormalizedNodeStreamWriter;
-import org.opendaylight.yangtools.yang.data.impl.schema.Builders;
-import org.opendaylight.yangtools.yang.data.impl.schema.ImmutableNodes;
 import org.opendaylight.yangtools.yang.model.api.SchemaPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,12 +60,8 @@ public class NotificationEngine {
 
 	// Global data broker
 	private DOMDataBroker globalDomDataBroker = null;
-	// Global dom notification service used to register listeners
-	private DOMNotificationService globalDomNotificationService = null;
-	// Global service for publishing notifications; Necessary with Netconf
-	// server?
-	private DOMNotificationPublishService globalNotificationPublisher = null;
-	// Pointer to the provider to access session information
+
+	// Pointer to the provider to push notifications
 	private YangpushProvider provider = null;
 
 	// TODO Support for one anchor time for multiple periodic subscriptions; to
@@ -116,50 +97,15 @@ public class NotificationEngine {
 	}
 
 	/**
-	 * Set global BI data broker, notification service and notification
-	 * publisher to notification engine
+	 * Set global BI data broker to notification engine
 	 * 
 	 */
-	public void setDOMBrokers(DOMDataBroker globalDomDataBroker, DOMNotificationService globalDomNotificationService,
-			DOMNotificationPublishService globalDomNotificationPublisher) {
+	public void setDataBroker(DOMDataBroker globalDomDataBroker) {
 		this.globalDomDataBroker = globalDomDataBroker;
-		this.globalDomNotificationService = globalDomNotificationService;
-		this.globalNotificationPublisher = globalDomNotificationPublisher;
-		DOMDataWriteTransaction tx1 = instance.globalDomDataBroker.newWriteOnlyTransaction();
-		NodeIdentifier pushupdates = NodeIdentifier.create(NetworkTopology.QNAME);
-		NodeIdentifier pushupdate = NodeIdentifier.create(Topology.QNAME);
-		YangInstanceIdentifier iid = YangInstanceIdentifier.builder().node(NetworkTopology.QNAME).build();
-		// Creates container node in BI way and
-		// commit to MD-SAL at the start of the application.
-		ContainerNode cn = Builders.containerBuilder().withNodeIdentifier(pushupdates).build();
-		YangInstanceIdentifier iid_1 = iid.node(Topology.QNAME);
-		MapNode mn = Builders.mapBuilder().withNodeIdentifier(pushupdate).build();
-		NodeIdentifier topId = NodeIdentifier.create(QName.create(NetworkTopology.QNAME, "topology-id"));
-		YangInstanceIdentifier pid = YangInstanceIdentifier.builder().node(NetworkTopology.QNAME).node(Topology.QNAME)
-				.build();
-
-		NodeIdentifierWithPredicates p = new NodeIdentifierWithPredicates(
-				QName.create(NetworkTopology.QNAME, "topology"), QName.create(NetworkTopology.QNAME, "topology-id"),
-				"TEST");
-
-		MapEntryNode men = ImmutableNodes.mapEntryBuilder().withNodeIdentifier(p)
-				.withChild(ImmutableNodes.leafNode(topId, "TEST")).build();
-
-		YangInstanceIdentifier yid = pid
-				.node(new NodeIdentifierWithPredicates(Topology.QNAME, men.getIdentifier().getKeyValues()));
-
-		tx1.merge(LogicalDatastoreType.OPERATIONAL, iid, cn);
-		tx1.merge(LogicalDatastoreType.OPERATIONAL, iid_1, mn);
-		tx1.merge(LogicalDatastoreType.OPERATIONAL, yid, men);
-		try {
-			tx1.submit().checkedGet();
-		} catch (TransactionCommitFailedException e1) {
-			e1.printStackTrace();
-		}
 	}
 
 	/**
-	 * Set global BI yang push server provider to notification engine
+	 * Set global BI yang push provider to notification engine
 	 * 
 	 */
 	public void setProvider(YangpushProvider provider) {
@@ -182,56 +128,34 @@ public class NotificationEngine {
 		// Dont do anything if suspended, stopped etc.
 		if (underlyingSub.getSubscriptionStreamStatus() == SubscriptionStreamStatus.active) {
 			LOG.info("Processing periodic notification for active subscription {}...", subscriptionID);
-			// TODO Correct type when SubEngine is adapted?
 			String stream = underlyingSub.getStream();
 
-			// TODO Maybe identify data (as node) with filters before reading to
-			// make data store access smaller.
-			// YangInstanceIdentifier yid =
-			// YangInstanceIdentifier.builder().node(Netconf.QNAME).node(Streams.QNAME)
-			// .node(Stream.QNAME).build();
-
 			// Preparations for read from data store TODO transactionChain?
-			LOG.info("MARKER1");
 			DOMDataReadTransaction readTransaction = this.globalDomDataBroker.newReadOnlyTransaction();
-			LOG.info("MARKER2");
 			CheckedFuture<Optional<NormalizedNode<?, ?>>, ReadFailedException> future = null;
-			LOG.info("MARKER3");
 			Optional<NormalizedNode<?, ?>> optional = Optional.absent();
-			LOG.info("MARKER4");
 			NormalizedNode<?, ?> data = null;
-			// TODO Adapt to correct type of stream.
+
 			switch (stream) {
 
-			case "NETCONF":
-				LOG.info("MARKER5");
-				future = readTransaction.read(LogicalDatastoreType.OPERATIONAL, YangpushProvider.NETCONF_TOPO_YID);
+			case "YANG-PUSH":
+				future = readTransaction.read(LogicalDatastoreType.OPERATIONAL, YangpushProvider.ROOT);
 				break;
 			case "CONFIGURATION":
-				LOG.info("MARKER6");
-
-				future = readTransaction.read(LogicalDatastoreType.CONFIGURATION, YangpushProvider.NETCONF_TOPO_YID);
+				future = readTransaction.read(LogicalDatastoreType.CONFIGURATION, YangpushProvider.ROOT);
 				break;
 			case "OPERATIONAL":
-				LOG.info("MARKER7");
-
-				future = readTransaction.read(LogicalDatastoreType.OPERATIONAL, YangpushProvider.NETCONF_TOPO_YID);
+				future = readTransaction.read(LogicalDatastoreType.OPERATIONAL, YangpushProvider.ROOT);
 				break;
 			default:
 				LOG.error("Stream {} not supported.", stream);
 				return;
 			}
 			try {
-				LOG.info("MARKER8: {}", future);
-
 				optional = future.checkedGet();
-				LOG.info("MARKER9: {}", optional);
 
 				if (optional != null && optional.isPresent()) {
-					LOG.info("MARKER10");
 					data = optional.get();
-					// Applying filters to the retrieved data.
-					applyFilter();
 
 					LOG.info("Data for periodic notification of subscription {} read successfully from data store: {}",
 							subscriptionID, data);
@@ -240,23 +164,21 @@ public class NotificationEngine {
 				LOG.warn("Reading data for notification failed:", e);
 			}
 
-			LOG.info("MARKER11");
 			DOMResult result = new DOMResult();
-			LOG.info("MARKER12");
 			result.setNode(XmlUtil.newDocument());
-			LOG.info("MARKER13");
+
 			try {
 				writeNormalizedNode(data, result);
 			} catch (IOException | XMLStreamException e) {
 				LOG.warn("Transforming normalized node to dom result failed:", e);
 			}
-			LOG.info("MARKER14");
+			applyFilter(); // TODO
 			PeriodicNotification notification = new PeriodicNotification((Document) result.getNode(), subscriptionID);
 			// TODO Maybe move this part to the provider itself to later manage
 			// other transport options
 			LOG.info("Sending periodic notification for subscription with ID {}...", subscriptionID);
 			provider.pushNotification(notification);
-			LOG.info("Periodic notification for subscription with ID {} sent over session {}", subscriptionID);
+			LOG.info("Periodic notification for subscription with ID {} sent.", subscriptionID);
 		} else {
 			LOG.info("Not processing periodic notification for subscription {}. Status: {}", subscriptionID,
 					underlyingSub.getSubscriptionStreamStatus());
@@ -290,16 +212,11 @@ public class NotificationEngine {
 			} catch (IOException | XMLStreamException e) {
 				LOG.warn("Transforming normalized node to dom result failed:", e);
 			}
+			applyFilter(); // TODO
 			OnChangeNotification notification = new OnChangeNotification((Document) result.getNode(), subscriptionID);
-			// TODO Maybe move this part to the provider itself to later manage
-			// other transport options.
-			// Looking for the session that initialized this subscription and
-			// sending notification
 			LOG.info("Sending on change notification for subscription with ID {}...", subscriptionID);
-			// NetconfServerSession session = (NetconfServerSession)
-			// provider.getNetconfSession(subscriptionID);
-			// session.sendMessage(notification);
-			LOG.info("On change notification for subscription with ID {} sent over session {}", subscriptionID);
+			provider.pushNotification(notification);
+			LOG.info("On change notification for subscription with ID {} sent.", subscriptionID);
 
 		} else {
 			LOG.info("Not processing on change notification for subscription {}. Status: {}", subscriptionID,
@@ -338,16 +255,14 @@ public class NotificationEngine {
 	 */
 	public void registerOnChangeNotification(String subscriptionID) {
 		SubscriptionInfo underlyingSubscription = SubscriptionEngine.getInstance().getSubscription(subscriptionID);
+
 		String stream = underlyingSubscription.getStream();
-		// TODO More parameters?
 		String subStartTime = underlyingSubscription.getSubscriptionStartTime();
 		String subStopTime = underlyingSubscription.getSubscriptionStopTime();
-		// TODO change all YIDs?
 		Long dampeningPeriod = underlyingSubscription.getDampeningPeriod();
-		// boolean noSynchOnStart = underlyingSubscription.getNoSynchOnStart();
-		boolean noSynchOnStart = false;
-		OnChangeHandler handler = new OnChangeHandler(globalDomDataBroker, stream,
-				YangInstanceIdentifier.builder().node(Subscriptions.QNAME).build());
+		boolean noSynchOnStart = underlyingSubscription.getNoSynchOnStart();
+
+		OnChangeHandler handler = new OnChangeHandler(globalDomDataBroker, stream, YangpushProvider.ROOT);
 		handler.scheduleNotification(subscriptionID, subStartTime, subStopTime, dampeningPeriod, noSynchOnStart);
 		this.notificationListenerMap.put(subscriptionID, handler);
 		LOG.info("On change notification for subscription ID {} successfully registered", subscriptionID);

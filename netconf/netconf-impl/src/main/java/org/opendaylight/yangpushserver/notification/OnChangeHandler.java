@@ -10,24 +10,27 @@ package org.opendaylight.yangpushserver.notification;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Collection;
 import java.util.Date;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import org.opendaylight.controller.md.sal.common.api.data.AsyncDataBroker.DataChangeScope;
-import org.opendaylight.controller.md.sal.common.api.data.AsyncDataChangeEvent;
 import org.opendaylight.controller.md.sal.common.api.data.LogicalDatastoreType;
 import org.opendaylight.controller.md.sal.dom.api.DOMDataBroker;
-import org.opendaylight.controller.md.sal.dom.api.DOMDataChangeListener;
+import org.opendaylight.controller.md.sal.dom.api.DOMDataTreeChangeListener;
+import org.opendaylight.controller.md.sal.dom.api.DOMDataTreeChangeService;
+import org.opendaylight.controller.md.sal.dom.api.DOMDataTreeIdentifier;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine.operations;
 import org.opendaylight.yangpushserver.subscription.SubscriptionInfo;
 import org.opendaylight.yangpushserver.subscription.SubscriptionInfo.SubscriptionStreamStatus;
 import org.opendaylight.yangtools.concepts.ListenerRegistration;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier;
-import org.opendaylight.yangtools.yang.data.api.schema.NormalizedNode;
+import org.opendaylight.yangtools.yang.data.api.schema.tree.DataTreeCandidate;
+import org.opendaylight.yangtools.yang.data.api.schema.tree.DataTreeCandidateNode;
+import org.opendaylight.yangtools.yang.data.api.schema.tree.ModificationType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +42,7 @@ import org.slf4j.LoggerFactory;
  * @author Dario.Schwarzbach
  *
  */
-public class OnChangeHandler implements AutoCloseable, DOMDataChangeListener {
+public class OnChangeHandler implements AutoCloseable, DOMDataTreeChangeListener {
 	private static final Logger LOG = LoggerFactory.getLogger(OnChangeHandler.class);
 
 	private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
@@ -53,24 +56,27 @@ public class OnChangeHandler implements AutoCloseable, DOMDataChangeListener {
 	private Long timeOfLastUpdate;
 	private Long dampeningPeriod;
 
-	private ListenerRegistration<DOMDataChangeListener> registration;
-	private DOMDataBroker db;
+	private ListenerRegistration<OnChangeHandler> registration;
+	private DOMDataTreeChangeService domDataTreeChangeService;
 
 	/**
 	 * Constructor for the on change handler that serves as scheduler and
 	 * listener at the same time.
 	 * 
 	 * @param db
-	 *            Data broker the listener is registered to
+	 *            Data broker to retrieve the {@link DOMDataTreeChangeService}
+	 *            what is used to register {@link OnChangeHandler} as
+	 *            {@link DOMDataTreeChangeListener}
 	 * @param stream
 	 *            Part of the md-sal data store we are listening on (e.g.
-	 *            NETCONF, CONFIGURATION,...)
+	 *            YANG-PUSH, CONFIGURATION,...)
 	 * @param yid
 	 *            Identifier for a specific node we want to listen on
 	 */
 	public OnChangeHandler(DOMDataBroker db, String stream, YangInstanceIdentifier yid) {
 		super();
-		this.db = db;
+		domDataTreeChangeService = (DOMDataTreeChangeService) db.getSupportedExtensions()
+				.get(DOMDataTreeChangeService.class);
 		this.stream = stream;
 		this.yid = yid;
 	}
@@ -88,60 +94,6 @@ public class OnChangeHandler implements AutoCloseable, DOMDataChangeListener {
 			scheduler.shutdown();
 		}
 		NotificationEngine.getInstance().unregisterNotification(subscriptionID);
-	}
-
-	@Override
-	public void onDataChanged(AsyncDataChangeEvent<YangInstanceIdentifier, NormalizedNode<?, ?>> change) {
-		LOG.info("Noticed changed data for subscription {}", subscriptionID);
-		Long currentTime = new Date().getTime();
-		if (currentTime >= timeOfLastUpdate + dampeningPeriod) {
-			LOG.info("Dampening period of {} over...next update will be triggered", dampeningPeriod);
-			if (change.getCreatedData().containsKey(yid)) {
-				if (change.getCreatedData().get(yid) instanceof NormalizedNode<?, ?>) {
-					LOG.info("On change notification for subscription {} triggered with created data: {}",
-							subscriptionID, change.getCreatedData().get(yid));
-					NotificationEngine.getInstance().onChangeNotification(subscriptionID,
-							change.getCreatedData().get(yid));
-					timeOfLastUpdate = new Date().getTime();
-				}
-			} else if (change.getUpdatedData().containsKey(yid)) {
-				if (change.getUpdatedData().get(yid) instanceof NormalizedNode<?, ?>) {
-					LOG.info("On change notification for subscription {} triggered with updated data: {}",
-							subscriptionID, change.getUpdatedData().get(yid));
-					NotificationEngine.getInstance().onChangeNotification(subscriptionID,
-							change.getUpdatedData().get(yid));
-					timeOfLastUpdate = new Date().getTime();
-				}
-			}
-			// TODO Extra case for removed data?
-			// else if (change.getRemovedPaths().contains(yid))
-
-			// ALTERNATIVE USING FUTURE: class has to extend
-			// AbstractFuture<NormalizedNode<?, ?>>
-			// InstanceIdentifier<GreetingRegistryEntry> iid =
-			// InstanceIdentifier.create(GreetingRegistry.class)
-			// .child(GreetingRegistryEntry.class, new
-			// GreetingRegistryEntryKey(this.name));
-			// if (event.getCreatedData().containsKey(iid)) {
-			// if (event.getCreatedData().get(iid) instanceof
-			// GreetingRegistryEntry)
-			// {
-			// this.set((GreetingRegistryEntry)
-			// event.getCreatedData().get(iid));
-			// }
-			// quietClose();
-			// } else if (event.getUpdatedData().containsKey(iid)) {
-			// if (event.getUpdatedData().get(iid) instanceof
-			// GreetingRegistryEntry)
-			// {
-			// this.set((GreetingRegistryEntry)
-			// event.getUpdatedData().get(iid));
-			// }
-			// quietClose();
-			// }
-		} else {
-			LOG.info("Dampening period of {} not over yet...no update will be triggered", dampeningPeriod);
-		}
 	}
 
 	/**
@@ -176,12 +128,12 @@ public class OnChangeHandler implements AutoCloseable, DOMDataChangeListener {
 		final Runnable triggerAction = new Runnable() {
 			@Override
 			public void run() {
-				LOG.info("DOMDataChangeListener for subscription {} registered and subscription set to active",
+				LOG.info("DOMDataTreeChangeListener for subscription {} registered and subscription set to active",
 						subscriptionID);
 				if (SubscriptionEngine.getInstance().getSubscription(subscriptionID)
 						.getSubscriptionStreamStatus() == SubscriptionStreamStatus.inactive) {
 					SubscriptionEngine.getInstance().getSubscription(subscriptionID)
-					.setSubscriptionStreamStatus(SubscriptionStreamStatus.active);
+							.setSubscriptionStreamStatus(SubscriptionStreamStatus.active);
 				}
 				registerListeners();
 			}
@@ -209,7 +161,7 @@ public class OnChangeHandler implements AutoCloseable, DOMDataChangeListener {
 		}
 		if (deltaTillStop > 0) {
 			scheduler.schedule(new Runnable() {
-				
+
 				@Override
 				public void run() {
 					SubscriptionInfo subscription = SubscriptionEngine.getInstance().getSubscription(subscriptionID);
@@ -230,21 +182,20 @@ public class OnChangeHandler implements AutoCloseable, DOMDataChangeListener {
 	 * parameters.
 	 */
 	private void registerListeners() {
-		// TODO Correct type of stream?
 		switch (stream) {
-		case "NETCONF":
-			this.registration = db.registerDataChangeListener(LogicalDatastoreType.OPERATIONAL, yid, this,
-					DataChangeScope.BASE);
-//			this.registration = db.registerDataChangeListener(LogicalDatastoreType.CONFIGURATION, yid, this,
-//					DataChangeScope.BASE);
+		case "YANG-PUSH":
+			this.registration = domDataTreeChangeService.registerDataTreeChangeListener(
+					new DOMDataTreeIdentifier(LogicalDatastoreType.OPERATIONAL, yid), this);
+			this.registration = domDataTreeChangeService.registerDataTreeChangeListener(
+					new DOMDataTreeIdentifier(LogicalDatastoreType.CONFIGURATION, yid), this);
 			break;
 		case "CONFIGURATION":
-			this.registration = db.registerDataChangeListener(LogicalDatastoreType.CONFIGURATION, yid, this,
-					DataChangeScope.BASE);
+			this.registration = domDataTreeChangeService.registerDataTreeChangeListener(
+					new DOMDataTreeIdentifier(LogicalDatastoreType.CONFIGURATION, yid), this);
 			break;
 		case "OPERATIONAL":
-			this.registration = db.registerDataChangeListener(LogicalDatastoreType.OPERATIONAL, yid, this,
-					DataChangeScope.BASE);
+			this.registration = domDataTreeChangeService.registerDataTreeChangeListener(
+					new DOMDataTreeIdentifier(LogicalDatastoreType.OPERATIONAL, yid), this);
 			break;
 		default:
 			LOG.error("Stream {} not supported.", stream);
@@ -259,6 +210,40 @@ public class OnChangeHandler implements AutoCloseable, DOMDataChangeListener {
 			this.close();
 		} catch (Exception e) {
 			throw new IllegalStateException("Unable to close registration", e);
+		}
+	}
+
+	@Override
+	public void onDataTreeChanged(Collection<DataTreeCandidate> changes) {
+		LOG.info("Noticed changed data for subscription {}", subscriptionID);
+		NotificationEngine notificationEngine = NotificationEngine.getInstance();
+		Long currentTime = new Date().getTime();
+		if (currentTime >= timeOfLastUpdate + dampeningPeriod) {
+			LOG.info("Dampening period of {} over...next update will be triggered", dampeningPeriod);
+			for (DataTreeCandidate change : changes) {
+				DataTreeCandidateNode rootNode = change.getRootNode();
+				if (rootNode.getModificationType() == ModificationType.WRITE) {
+					LOG.info("Noticed a {} for data", ModificationType.WRITE);
+
+					if (rootNode.getDataAfter() != null && rootNode.getDataAfter().isPresent()) {
+						notificationEngine.onChangeNotification(subscriptionID, rootNode.getDataAfter().get());
+					}
+				} else if (rootNode.getModificationType() == ModificationType.SUBTREE_MODIFIED) {
+					LOG.info("Noticed a {} for data", ModificationType.SUBTREE_MODIFIED);
+
+					if (rootNode.getDataAfter() != null && rootNode.getDataAfter().isPresent()) {
+						notificationEngine.onChangeNotification(subscriptionID, rootNode.getDataAfter().get());
+					}
+				} else if (rootNode.getModificationType() == ModificationType.DELETE) {
+					LOG.info("Noticed a {} for data", ModificationType.DELETE);
+
+					if (rootNode.getDataAfter() != null && rootNode.getDataAfter().isPresent()) {
+						notificationEngine.onChangeNotification(subscriptionID, rootNode.getDataAfter().get());
+					}
+				}
+			}
+		} else {
+			LOG.info("Dampening period of {} not over yet...no update will be triggered", dampeningPeriod);
 		}
 	}
 }
