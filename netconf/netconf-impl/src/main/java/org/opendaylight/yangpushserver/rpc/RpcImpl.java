@@ -7,6 +7,7 @@
  */
 package org.opendaylight.yangpushserver.rpc;
 
+import java.io.StringWriter;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -14,9 +15,12 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
-import org.opendaylight.controller.config.util.xml.XmlElement;
 import org.opendaylight.controller.md.sal.dom.api.DOMDataBroker;
 import org.opendaylight.controller.md.sal.dom.api.DOMRpcException;
 import org.opendaylight.controller.md.sal.dom.api.DOMRpcIdentifier;
@@ -41,6 +45,7 @@ import org.opendaylight.yangpushserver.subscription.SubscriptionInfo;
 import org.opendaylight.yangpushserver.subscription.SubscriptionInfo.SubscriptionStreamStatus;
 import org.opendaylight.yangtools.yang.common.QName;
 import org.opendaylight.yangtools.yang.common.RpcError;
+import org.opendaylight.yangtools.yang.common.RpcResultBuilder;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.AugmentationIdentifier;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.NodeIdentifier;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.PathArgument;
@@ -183,6 +188,7 @@ public class RpcImpl implements DOMRpcImplementation {
 	 */
 	@Override
 	public CheckedFuture<DOMRpcResult, DOMRpcException> invokeRpc(DOMRpcIdentifier rpc, NormalizedNode<?, ?> input) {
+
 		LOG.info("sub-RPC invoked");
 		if (rpc.equals(ESTABLISH_SUBSCRIPTION_RPC)) {
 			LOG.info("This is a establish subscription RPC");
@@ -195,7 +201,9 @@ public class RpcImpl implements DOMRpcImplementation {
 			return deleteSubscriptionRpcHandler(input);
 		}
 		LOG.info("Unknown RPC...");
-		return Futures.immediateCheckedFuture((DOMRpcResult) new DefaultDOMRpcResult());
+		return Futures
+				.immediateFailedCheckedFuture((DOMRpcException) new DOMRpcException("RPC invocation not supported!") {
+				});
 	}
 
 	/****************************************
@@ -245,12 +253,19 @@ public class RpcImpl implements DOMRpcImplementation {
 		// parsing should have been 'ok'
 		LOG.info("Parsing complete");
 		LOG.info("Delete Subscription parsed Input: " + inputData.toString());
+		notificationEngine.unregisterNotification(inputData.getSubscriptionId());
 		if (subscriptionEngine.checkIfSubscriptionExists(inputData.getSubscriptionId())) {
 			subscriptionEngine.updateMdSal(inputData, operations.delete);
 		} else {
 			LOG.error("No such subscription with this id.");
-			RpcError output = null;
-			return Futures.immediateCheckedFuture((DOMRpcResult) new DefaultDOMRpcResult(output));
+			// TODO remove this part!
+			// RpcError.ErrorType test = new RpcErrors();
+			// RpcError output =
+			// RpcResultBuilder.newError(RpcError.ErrorType.RPC, null, "test");
+			// LOG.info(output.toString());
+			return Futures.immediateFailedCheckedFuture(
+					(DOMRpcException) new DOMRpcException("No such subscription with ID:"+inputData.getSubscriptionId()) {
+					});
 		}
 
 		ContainerNode output = createDeleteSubOutput(inputData);
@@ -759,8 +774,25 @@ public class RpcImpl implements DOMRpcImplementation {
 						String test2 = domSource.getSystemId();
 						String test3 = test.getNodeName();
 						esri.setFilter(domSource);
-//						XmlElement dataSrc = XmlElement.fromDomElement(domSource);
-						LOG.info("Test: " + test + "Test2: " + test2 + "Test3: " + test3);
+						// XmlElement dataSrc =
+						// XmlElement.fromDomElement(domSource);
+
+						Transformer transformer = TransformerFactory.newInstance().newTransformer();
+						transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+						transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+						// initialize StreamResult with File object to save to
+						// file
+						StreamResult result = new StreamResult(new StringWriter());
+						DOMSource source = domSource;
+						transformer.transform(source, result);
+						String xmlString = result.getWriter().toString();
+						LOG.info("Original xmlString: " + xmlString);
+						xmlString = xmlString.split("\\<")[3];
+						// LOG.info("xmlString2: "+xmlString);
+						xmlString = xmlString.split("\\s+")[0];
+						// LOG.info("xmlString3: "+xmlString);
+						// LOG.info("Test: " + test + "Test2: " + test2 +
+						// "Test3: " + test3);
 					} else {
 						LOG.error("Only subtree filter supported at the moment.");
 					}
