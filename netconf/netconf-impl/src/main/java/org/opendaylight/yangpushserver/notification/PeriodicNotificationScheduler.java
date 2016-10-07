@@ -39,7 +39,6 @@ public class PeriodicNotificationScheduler implements AutoCloseable {
 	private static final Logger LOG = LoggerFactory.getLogger(PeriodicNotificationScheduler.class);
 	private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 	private ScheduledFuture<?> trigger;
-	private String subscriptionID;
 	private String startTime;
 	private String stopTime;
 
@@ -61,7 +60,6 @@ public class PeriodicNotificationScheduler implements AutoCloseable {
 			Long period) {
 		DateFormat format = new SimpleDateFormat(PeriodicNotification.YANG_DATEANDTIME_FORMAT_BLUEPRINT);
 
-		this.subscriptionID = subscriptionID;
 		this.startTime = ensureYangDateAndTimeFormat(subStartTime);
 		this.stopTime = ensureYangDateAndTimeFormat(subStopTime);
 
@@ -112,7 +110,7 @@ public class PeriodicNotificationScheduler implements AutoCloseable {
 					LOG.info(
 							"Periodic notification for subscription {} reached its stop time and the subscription will be deleted",
 							subscriptionID);
-					quietClose();
+					NotificationEngine.getInstance().unregisterNotification(subscriptionID);
 				}
 			}, deltaTillStop, TimeUnit.MILLISECONDS);
 			LOG.info("Periodic notification for subscription {} scheduled with stop time {}", subscriptionID, stopTime);
@@ -128,7 +126,6 @@ public class PeriodicNotificationScheduler implements AutoCloseable {
 		if (this.scheduler != null) {
 			scheduler.shutdown();
 		}
-		NotificationEngine.getInstance().unregisterNotification(subscriptionID);
 	}
 
 	/**

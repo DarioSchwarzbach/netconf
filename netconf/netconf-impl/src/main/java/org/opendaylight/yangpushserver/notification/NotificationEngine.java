@@ -140,6 +140,7 @@ public class NotificationEngine {
 
 			case "YANG-PUSH":
 				future = readTransaction.read(LogicalDatastoreType.OPERATIONAL, YangpushProvider.ROOT);
+				secondPeriodicNotification(subscriptionID);
 				break;
 			case "CONFIGURATION":
 				future = readTransaction.read(LogicalDatastoreType.CONFIGURATION, YangpushProvider.ROOT);
@@ -157,8 +158,8 @@ public class NotificationEngine {
 				if (optional != null && optional.isPresent()) {
 					data = optional.get();
 
-					LOG.info("Data for periodic notification of subscription {} read successfully from data store: {}",
-							subscriptionID, data);
+					LOG.info("Data for periodic notification of subscription {} read successfully from data store",
+							subscriptionID);
 				}
 			} catch (ReadFailedException e) {
 				LOG.warn("Reading data for notification failed:", e);
@@ -182,6 +183,68 @@ public class NotificationEngine {
 		} else {
 			LOG.info("Not processing periodic notification for subscription {}. Status: {}", subscriptionID,
 					underlyingSub.getSubscriptionStreamStatus());
+		}
+	}
+
+	/**
+	 * The only purpose of this method is to send another periodic notification
+	 * for the second part of the data store when the subscribed stream is
+	 * YANG-PUSH.
+	 * 
+	 * @param subscriptionID
+	 *            ID of the subscription used to retrieve related data from
+	 *            {@link SubscriptionEngine}.
+	 */
+	private void secondPeriodicNotification(String subscriptionID) {
+		SubscriptionInfo underlyingSub = SubscriptionEngine.getInstance().getSubscription(subscriptionID);
+
+		// Dont do anything if suspended, stopped etc.
+		if (underlyingSub.getSubscriptionStreamStatus() == SubscriptionStreamStatus.active) {
+			LOG.info("Processing second periodic notification (CONFIGURATION) for active subscription {}...",
+					subscriptionID);
+			String stream = underlyingSub.getStream();
+
+			// Preparations for read from data store TODO transactionChain?
+			DOMDataReadTransaction readTransaction = this.globalDomDataBroker.newReadOnlyTransaction();
+			CheckedFuture<Optional<NormalizedNode<?, ?>>, ReadFailedException> future = null;
+			Optional<NormalizedNode<?, ?>> optional = Optional.absent();
+			NormalizedNode<?, ?> data = null;
+
+			future = readTransaction.read(LogicalDatastoreType.CONFIGURATION, YangpushProvider.ROOT);
+
+			try {
+				optional = future.checkedGet();
+
+				if (optional != null && optional.isPresent()) {
+					data = optional.get();
+
+					LOG.info(
+							"Data for second periodic notification of subscription {} read successfully from data store",
+							subscriptionID);
+				}
+			} catch (ReadFailedException e) {
+				LOG.warn("Reading data for notification failed:", e);
+			}
+
+			DOMResult result = new DOMResult();
+			result.setNode(XmlUtil.newDocument());
+
+			try {
+				writeNormalizedNode(data, result);
+			} catch (IOException | XMLStreamException e) {
+				LOG.warn("Transforming normalized node to dom result failed:", e);
+			}
+			applyFilter(); // TODO
+			PeriodicNotification notification = new PeriodicNotification((Document) result.getNode(), subscriptionID);
+			// TODO Maybe move this part to the provider itself to later manage
+			// other transport options
+			LOG.info("Sending second periodic notification (CONFIGURATION) for subscription with ID {}...",
+					subscriptionID);
+			provider.pushNotification(notification);
+			LOG.info("Second periodic notification for subscription with ID {} sent (CONFIGURATION).", subscriptionID);
+		} else {
+			LOG.info("Not processing second periodic notification (CONFIGURATION) for subscription {}. Status: {}",
+					subscriptionID, underlyingSub.getSubscriptionStreamStatus());
 		}
 	}
 

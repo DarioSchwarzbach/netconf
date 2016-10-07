@@ -56,7 +56,8 @@ public class OnChangeHandler implements AutoCloseable, DOMDataTreeChangeListener
 	private Long timeOfLastUpdate;
 	private Long dampeningPeriod;
 
-	private ListenerRegistration<OnChangeHandler> registration;
+	private ListenerRegistration<OnChangeHandler> registrationOne;
+	private ListenerRegistration<OnChangeHandler> registrationTwo;
 	private DOMDataTreeChangeService domDataTreeChangeService;
 
 	/**
@@ -83,8 +84,11 @@ public class OnChangeHandler implements AutoCloseable, DOMDataTreeChangeListener
 
 	@Override
 	public void close() throws Exception {
-		if (this.registration != null) {
-			registration.close();
+		if (this.registrationOne != null) {
+			registrationOne.close();
+		}
+		if (this.registrationTwo != null) {
+			registrationTwo.close();
 		}
 		if (this.trigger != null) {
 			trigger.cancel(true);
@@ -93,7 +97,17 @@ public class OnChangeHandler implements AutoCloseable, DOMDataTreeChangeListener
 		if (this.scheduler != null) {
 			scheduler.shutdown();
 		}
-		NotificationEngine.getInstance().unregisterNotification(subscriptionID);
+	}
+
+	/**
+	 * Calls method close() but handles the exception already.
+	 */
+	public void quietClose() {
+		try {
+			this.close();
+		} catch (Exception e) {
+			throw new IllegalStateException("Unable to close registration", e);
+		}
 	}
 
 	/**
@@ -180,7 +194,7 @@ public class OnChangeHandler implements AutoCloseable, DOMDataTreeChangeListener
 					LOG.info(
 							"On change notification for subscription {} reached its stop time and the subscription will be deleted",
 							subscriptionID);
-					quietClose();
+					NotificationEngine.getInstance().unregisterNotification(subscriptionID);
 				}
 			}, deltaTillStop, TimeUnit.MILLISECONDS);
 			LOG.info("On change notification for subscription {} scheduled with stop time {}", subscriptionID,
@@ -195,32 +209,21 @@ public class OnChangeHandler implements AutoCloseable, DOMDataTreeChangeListener
 	private void registerListeners() {
 		switch (stream) {
 		case "YANG-PUSH":
-			this.registration = domDataTreeChangeService.registerDataTreeChangeListener(
+			this.registrationOne = domDataTreeChangeService.registerDataTreeChangeListener(
 					new DOMDataTreeIdentifier(LogicalDatastoreType.OPERATIONAL, yid), this);
-			this.registration = domDataTreeChangeService.registerDataTreeChangeListener(
+			this.registrationTwo = domDataTreeChangeService.registerDataTreeChangeListener(
 					new DOMDataTreeIdentifier(LogicalDatastoreType.CONFIGURATION, yid), this);
 			break;
 		case "CONFIGURATION":
-			this.registration = domDataTreeChangeService.registerDataTreeChangeListener(
+			this.registrationOne = domDataTreeChangeService.registerDataTreeChangeListener(
 					new DOMDataTreeIdentifier(LogicalDatastoreType.CONFIGURATION, yid), this);
 			break;
 		case "OPERATIONAL":
-			this.registration = domDataTreeChangeService.registerDataTreeChangeListener(
+			this.registrationOne = domDataTreeChangeService.registerDataTreeChangeListener(
 					new DOMDataTreeIdentifier(LogicalDatastoreType.OPERATIONAL, yid), this);
 			break;
 		default:
 			LOG.error("Stream {} not supported.", stream);
-		}
-	}
-
-	/**
-	 * Calls method close() but handles the exception already.
-	 */
-	public void quietClose() {
-		try {
-			this.close();
-		} catch (Exception e) {
-			throw new IllegalStateException("Unable to close registration", e);
 		}
 	}
 
