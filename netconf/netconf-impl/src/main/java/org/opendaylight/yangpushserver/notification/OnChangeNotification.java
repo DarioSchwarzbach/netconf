@@ -38,11 +38,6 @@ public final class OnChangeNotification extends NetconfMessage {
 	public static final String CHANGES_XML = "datastore-changes-xml";
 	public static final String CHANGES_JSON = "datastore-changes-json";
 
-	/**
-	 * Used for unknown/un-parse-able event-times
-	 */
-	public static final Date UNKNOWN_EVENT_TIME = new Date(0);
-
 	private final Date eventTime;
 	private final String subscriptionID;
 
@@ -160,7 +155,7 @@ public final class OnChangeNotification extends NetconfMessage {
 			pushChangeUpdate.appendChild(timeOfUpdate);
 
 			final Element datastoreChange = notificationContent.createElement(CHANGES_XML);
-			
+
 			if (baseNotification != null) {
 				datastoreChange.appendChild(baseNotification);
 			}

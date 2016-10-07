@@ -22,6 +22,7 @@ import org.opendaylight.controller.md.sal.dom.api.DOMDataBroker;
 import org.opendaylight.controller.md.sal.dom.api.DOMDataTreeChangeListener;
 import org.opendaylight.controller.md.sal.dom.api.DOMDataTreeChangeService;
 import org.opendaylight.controller.md.sal.dom.api.DOMDataTreeIdentifier;
+import org.opendaylight.yangpushserver.notification.OAMNotification.OAMStatus;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine.operations;
 import org.opendaylight.yangpushserver.subscription.SubscriptionInfo;
@@ -194,6 +195,7 @@ public class OnChangeHandler implements AutoCloseable, DOMDataTreeChangeListener
 					LOG.info(
 							"On change notification for subscription {} reached its stop time and the subscription will be deleted",
 							subscriptionID);
+					NotificationEngine.getInstance().oamNotification(subscriptionID, OAMStatus.notificationComplete);
 					NotificationEngine.getInstance().unregisterNotification(subscriptionID);
 				}
 			}, deltaTillStop, TimeUnit.MILLISECONDS);

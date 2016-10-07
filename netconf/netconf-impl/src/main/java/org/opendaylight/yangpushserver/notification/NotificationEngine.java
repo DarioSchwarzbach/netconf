@@ -24,6 +24,7 @@ import org.opendaylight.netconf.util.NetconfUtil;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.PushChangeUpdate;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.PushUpdate;
 import org.opendaylight.yangpushserver.impl.YangpushProvider;
+import org.opendaylight.yangpushserver.notification.OAMNotification.OAMStatus;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine;
 import org.opendaylight.yangpushserver.subscription.SubscriptionInfo;
 import org.opendaylight.yangpushserver.subscription.SubscriptionInfo.SubscriptionStreamStatus;
@@ -202,7 +203,6 @@ public class NotificationEngine {
 		if (underlyingSub.getSubscriptionStreamStatus() == SubscriptionStreamStatus.active) {
 			LOG.info("Processing second periodic notification (CONFIGURATION) for active subscription {}...",
 					subscriptionID);
-			String stream = underlyingSub.getStream();
 
 			// Preparations for read from data store TODO transactionChain?
 			DOMDataReadTransaction readTransaction = this.globalDomDataBroker.newReadOnlyTransaction();
@@ -285,6 +285,38 @@ public class NotificationEngine {
 			LOG.info("Not processing on change notification for subscription {}. Status: {}", subscriptionID,
 					underlyingSub.getSubscriptionStreamStatus());
 		}
+	}
+
+	/**
+	 * Used to send various OAM (Operation, Administration and Maintenance)
+	 * notifications like defined in 'draft-ietf-netconf-rfc5277bis-00'
+	 * (September 11, 2016).
+	 * 
+	 * @param subscriptionID
+	 *            The related subscription ID the notification is send for, if
+	 *            any is necessary
+	 * @param status
+	 *            Defines what specific notification is composed and send, using
+	 *            {@link OAMStatus}
+	 */
+	public void oamNotification(String subscriptionID, OAMStatus status) {
+		if (subscriptionID != null) {
+			OAMNotification notification = new OAMNotification(XmlUtil.newDocument(), subscriptionID, status);
+
+			LOG.info("Sending '{}' notification for subscription with ID {}...", status, subscriptionID);
+			provider.pushNotification(notification, subscriptionID);
+			LOG.info("Notification '{}' for subscription with ID {} sent.", status, subscriptionID);
+		} else {
+			// TODO Might be implemented and used to send OAM notifications that
+			// concern every client connected to the server.
+			// OAMNotification notification = new
+			// OAMNotification(XmlUtil.newDocument(), null, status);
+			// provider.pushToAll(notification);
+		}
+	}
+
+	public static void main(String[] args) {
+		System.out.println(new OAMNotification(XmlUtil.newDocument(), "1", OAMStatus.notificationComplete));
 	}
 
 	/**
