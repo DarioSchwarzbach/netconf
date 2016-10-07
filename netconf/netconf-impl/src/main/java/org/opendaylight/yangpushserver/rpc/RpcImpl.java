@@ -259,6 +259,7 @@ public class RpcImpl implements DOMRpcImplementation {
 		if (subscriptionEngine.checkIfSubscriptionExists(inputData.getSubscriptionId())) {
 			subscriptionEngine.updateMdSal(inputData, operations.delete);
 			ContainerNode output = createDeleteSubOutput(inputData);
+			provider.onDeletedSubscription(inputData.getSubscriptionId());
 			// TODO Here should OAM message with 'subscription delete' be sent
 			return Futures.immediateCheckedFuture((DOMRpcResult) new DefaultDOMRpcResult(output));
 		} else {
@@ -271,13 +272,6 @@ public class RpcImpl implements DOMRpcImplementation {
 			return Futures.immediateFailedCheckedFuture(
 					createDOMRpcException("No such subscription with ID:" + inputData.getSubscriptionId()));
 		}
-<<<<<<< HEAD
-=======
-		ContainerNode output = createDeleteSubOutput(inputData);
-		provider.onDeletedSubscription(inputData.getSubscriptionId());
-		// TODO Here should OAM message with 'subscription delete' be sent
-		return Futures.immediateCheckedFuture((DOMRpcResult) new DefaultDOMRpcResult(output));
->>>>>>> 22a3c7c142f8601316c2cc0079a1bfe0f1469727
 	}
 
 	private ContainerNode createDeleteSubOutput(SubscriptionInfo inputData) {
@@ -407,12 +401,8 @@ public class RpcImpl implements DOMRpcImplementation {
 					"Wrong Subscription exists, neither on-Change nor periodic Subscription") {
 			});
 		}
-<<<<<<< HEAD
 		ContainerNode output = createEstablishAndModifySubOutput(inputData.getSubscriptionId());
-=======
-		ContainerNode output = createEstablishSubOutput(inputData.getSubscriptionId());
 		provider.onEstablishedSubscription(inputData.getSubscriptionId());
->>>>>>> 22a3c7c142f8601316c2cc0079a1bfe0f1469727
 		// TODO Here should OAM message with 'subscription established' be sent
 		return Futures.immediateCheckedFuture((DOMRpcResult) new DefaultDOMRpcResult(output));
 	}
