@@ -78,7 +78,7 @@ public class NetconfServerSessionNegotiator
 
         NetconfServerSession serverSession = new NetconfServerSession(sessionListener, channel,
                 getSessionPreferences().getSessionId(), parsedHeader);
-        ypProvider.onSessionsUp(serverSession);
+        serverSession.setYpProvider(ypProvider);
         return serverSession;
     }
 

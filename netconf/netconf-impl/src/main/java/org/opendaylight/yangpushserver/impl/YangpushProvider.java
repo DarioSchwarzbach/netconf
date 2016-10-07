@@ -9,7 +9,9 @@ package org.opendaylight.yangpushserver.impl;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.opendaylight.controller.md.sal.dom.api.DOMDataBroker;
@@ -42,7 +44,9 @@ public class YangpushProvider implements Provider, AutoCloseable {
 	private RpcImpl ypServerRpcImpl;
 	private SubscriptionEngine subEngine;
 	private NotificationEngine notificationEngine;
-	private Set<NetconfServerSession> serverSessions;
+	private String latestEstablishedSubscriptionID = "0";
+	private String priorEstablishedSubscriptionID = "0";
+	private Map<NetconfServerSession, Set<String>> serverSessionToSubIds;
 
 	/**
 	 * Method called when the blueprint container is destroyed.
@@ -60,7 +64,7 @@ public class YangpushProvider implements Provider, AutoCloseable {
 	 */
 	@Override
 	public void onSessionInitiated(ProviderSession session) {
-		serverSessions = new HashSet<>();
+		serverSessionToSubIds = new HashMap<>();
 		// get the DOM version of MD-SAL services
 		this.globalDomDataBroker = session.getService(DOMDataBroker.class);
 
@@ -73,27 +77,97 @@ public class YangpushProvider implements Provider, AutoCloseable {
 		this.notificationEngine.setProvider(this);
 
 		final DOMRpcProviderService service = session.getService(DOMRpcProviderService.class);
-		ypServerRpcImpl = new RpcImpl(service, this.globalDomDataBroker);
+		ypServerRpcImpl = new RpcImpl(service, this.globalDomDataBroker, this);
 
 		LOG.info("YangpushProvider is registered.");
 	}
 
+	/**
+	 * @deprecated not using
+	 */
 	@Override
 	public Collection<ProviderFunctionality> getProviderFunctionality() {
-		// Deprecated, not using.
 		return Collections.emptySet();
 	}
 
-	public void pushNotification(NetconfMessage notification) {
+	/**
+	 * Checks which subscriptions fit to what {@link NetconfServerSession} and
+	 * send the notifications related to this subscription over the session.
+	 * 
+	 * @param notification
+	 *            Notification to be send out
+	 * @param subscriptionID
+	 *            The ID of the subscription the notification is send for
+	 */
+	public void pushNotification(NetconfMessage notification, String subscriptionID) {
 		LOG.info("Push notification...");
-		for (NetconfServerSession currentSession : serverSessions) {
-			currentSession.sendMessage(notification);
-			LOG.info("Pushed notification {} on session {}", notification, currentSession);
+		for (NetconfServerSession sessionKey : serverSessionToSubIds.keySet()) {
+			for (String subIDValue : serverSessionToSubIds.get(sessionKey)) {
+				if (subIDValue.equals(subscriptionID)) {
+					sessionKey.sendMessage(notification);
+					LOG.info("Pushed notification {} on session {}", notification, sessionKey);
+				}
+			}
 		}
 	}
 
-	public void onSessionsUp(NetconfServerSession serverSession) {
-		LOG.info("YangpushProvider server session up: {}", serverSession);
-		serverSessions.add(serverSession);
+	/**
+	 * Notifies the provider if a {@link NetconfServerSession} successfully
+	 * received a RPC and provides the related session.
+	 * 
+	 * @param serverSession
+	 *            Netconf server session that received the RPC
+	 */
+	public void onIncomingRpcSuccess(NetconfServerSession serverSession) {
+		LOG.warn("New successful RPC on netconf server session");
+		if (!latestEstablishedSubscriptionID.equals(priorEstablishedSubscriptionID)) {
+			if (serverSessionToSubIds.containsKey(serverSession)) {
+				if (serverSessionToSubIds.get(serverSession) != null) {
+					Set<String> relatedSetofSubIds = serverSessionToSubIds.get(serverSession);
+					relatedSetofSubIds.add(latestEstablishedSubscriptionID);
+					serverSessionToSubIds.put(serverSession, relatedSetofSubIds);
+				}
+			} else {
+				Set<String> subIdValues = new HashSet<>();
+				subIdValues.add(latestEstablishedSubscriptionID);
+				serverSessionToSubIds.put(serverSession, subIdValues);
+			}
+			priorEstablishedSubscriptionID = latestEstablishedSubscriptionID;
+		}
+	}
+
+	/**
+	 * Notifies the provider if a new subscription was established.
+	 * 
+	 * @param subscriptionId
+	 *            ID of the new subscription
+	 */
+	public void onEstablishedSubscription(String subscriptionId) {
+		LOG.warn("New successful ESTABLISH");
+		if (latestEstablishedSubscriptionID.equals(priorEstablishedSubscriptionID)) {
+			latestEstablishedSubscriptionID = subscriptionId;
+		} else {
+			priorEstablishedSubscriptionID = latestEstablishedSubscriptionID;
+			latestEstablishedSubscriptionID = subscriptionId;
+		}
+	}
+
+	/**
+	 * Notifies the provider if an existing subscription was deleted.
+	 * 
+	 * @param subscriptionId
+	 *            ID of the deleted subscription
+	 */
+	public void onDeletedSubscription(String subscriptionId) {
+		LOG.warn("New successful DELETE");
+		for (NetconfServerSession sessionKey : serverSessionToSubIds.keySet()) {
+			Set<String> toRemove = new HashSet<>();
+			for (String subIDValue : serverSessionToSubIds.get(sessionKey)) {
+				if (subIDValue.equals(subscriptionId)) {
+					toRemove.add(subscriptionId);
+				}
+			}
+			serverSessionToSubIds.get(sessionKey).removeAll(toRemove);
+		}
 	}
 }

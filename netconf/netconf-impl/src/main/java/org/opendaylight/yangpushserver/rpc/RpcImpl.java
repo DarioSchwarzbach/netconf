@@ -36,6 +36,7 @@ import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notif
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.ModifySubscriptionOutput;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.establish.subscription.input.filter.type.UpdateFilter;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.update.filter.update.filter.Subtree;
+import org.opendaylight.yangpushserver.impl.YangpushProvider;
 import org.opendaylight.yangpushserver.notification.NotificationEngine;
 import org.opendaylight.yangpushserver.notification.PeriodicNotification;
 import org.opendaylight.yangpushserver.rpc.Errors.errors;
@@ -158,15 +159,17 @@ public class RpcImpl implements DOMRpcImplementation {
 
 	private DOMRpcProviderService service;
 	private DOMDataBroker globalDomDataBroker;
+	private YangpushProvider provider;
 	private SubscriptionEngine subscriptionEngine = null;
 	private NotificationEngine notificationEngine = null;
 	private SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
 	String date = String.valueOf(new Date().getTime());
 
-	public RpcImpl(DOMRpcProviderService service, DOMDataBroker globalDomDataBroker) {
+	public RpcImpl(DOMRpcProviderService service, DOMDataBroker globalDomDataBroker, YangpushProvider provider) {
 		super();
 		this.service = service;
 		this.globalDomDataBroker = globalDomDataBroker;
+		this.provider = provider;
 		this.subscriptionEngine = SubscriptionEngine.getInstance();
 		this.notificationEngine = NotificationEngine.getInstance();
 		// TODO Register?
@@ -268,6 +271,7 @@ public class RpcImpl implements DOMRpcImplementation {
 					createDOMRpcException("No such subscription with ID:" + inputData.getSubscriptionId()));
 		}
 		ContainerNode output = createDeleteSubOutput(inputData);
+		provider.onDeletedSubscription(inputData.getSubscriptionId());
 		// TODO Here should OAM message with 'subscription delete' be sent
 		return Futures.immediateCheckedFuture((DOMRpcResult) new DefaultDOMRpcResult(output));
 	}
@@ -404,6 +408,7 @@ public class RpcImpl implements DOMRpcImplementation {
 			});
 		}
 		ContainerNode output = createEstablishSubOutput(inputData.getSubscriptionId());
+		provider.onEstablishedSubscription(inputData.getSubscriptionId());
 		// TODO Here should OAM message with 'subscription established' be sent
 		return Futures.immediateCheckedFuture((DOMRpcResult) new DefaultDOMRpcResult(output));
 	}
