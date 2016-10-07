@@ -17,6 +17,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.PushUpdate;
+import org.opendaylight.yangpushserver.notification.OAMNotification.OAMStatus;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine.operations;
 import org.opendaylight.yangpushserver.subscription.SubscriptionInfo;
@@ -110,6 +111,7 @@ public class PeriodicNotificationScheduler implements AutoCloseable {
 					LOG.info(
 							"Periodic notification for subscription {} reached its stop time and the subscription will be deleted",
 							subscriptionID);
+					NotificationEngine.getInstance().oamNotification(subscriptionID, OAMStatus.notificationComplete);
 					NotificationEngine.getInstance().unregisterNotification(subscriptionID);
 				}
 			}, deltaTillStop, TimeUnit.MILLISECONDS);

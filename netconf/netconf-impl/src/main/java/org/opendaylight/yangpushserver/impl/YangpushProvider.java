@@ -119,7 +119,7 @@ public class YangpushProvider implements Provider, AutoCloseable {
 	 *            Netconf server session that received the RPC
 	 */
 	public void onIncomingRpcSuccess(NetconfServerSession serverSession) {
-		LOG.warn("New successful RPC on netconf server session");
+		LOG.info("New successful RPC on netconf server session");
 		if (!latestEstablishedSubscriptionID.equals(priorEstablishedSubscriptionID)) {
 			if (serverSessionToSubIds.containsKey(serverSession)) {
 				if (serverSessionToSubIds.get(serverSession) != null) {
@@ -143,7 +143,6 @@ public class YangpushProvider implements Provider, AutoCloseable {
 	 *            ID of the new subscription
 	 */
 	public void onEstablishedSubscription(String subscriptionId) {
-		LOG.warn("New successful ESTABLISH");
 		if (latestEstablishedSubscriptionID.equals(priorEstablishedSubscriptionID)) {
 			latestEstablishedSubscriptionID = subscriptionId;
 		} else {
@@ -159,7 +158,6 @@ public class YangpushProvider implements Provider, AutoCloseable {
 	 *            ID of the deleted subscription
 	 */
 	public void onDeletedSubscription(String subscriptionId) {
-		LOG.warn("New successful DELETE");
 		for (NetconfServerSession sessionKey : serverSessionToSubIds.keySet()) {
 			Set<String> toRemove = new HashSet<>();
 			for (String subIDValue : serverSessionToSubIds.get(sessionKey)) {
