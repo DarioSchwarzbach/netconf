@@ -178,7 +178,7 @@ public class NotificationEngine {
 			// TODO Maybe move this part to the provider itself to later manage
 			// other transport options
 			LOG.info("Sending periodic notification for subscription with ID {}...", subscriptionID);
-			provider.pushNotification(notification);
+			provider.pushNotification(notification, subscriptionID);
 			LOG.info("Periodic notification for subscription with ID {} sent.", subscriptionID);
 		} else {
 			LOG.info("Not processing periodic notification for subscription {}. Status: {}", subscriptionID,
@@ -240,7 +240,7 @@ public class NotificationEngine {
 			// other transport options
 			LOG.info("Sending second periodic notification (CONFIGURATION) for subscription with ID {}...",
 					subscriptionID);
-			provider.pushNotification(notification);
+			provider.pushNotification(notification, subscriptionID);
 			LOG.info("Second periodic notification for subscription with ID {} sent (CONFIGURATION).", subscriptionID);
 		} else {
 			LOG.info("Not processing second periodic notification (CONFIGURATION) for subscription {}. Status: {}",
@@ -278,7 +278,7 @@ public class NotificationEngine {
 			applyFilter(); // TODO
 			OnChangeNotification notification = new OnChangeNotification((Document) result.getNode(), subscriptionID);
 			LOG.info("Sending on change notification for subscription with ID {}...", subscriptionID);
-			provider.pushNotification(notification);
+			provider.pushNotification(notification, subscriptionID);
 			LOG.info("On change notification for subscription with ID {} sent.", subscriptionID);
 
 		} else {
@@ -367,7 +367,7 @@ public class NotificationEngine {
 		} else {
 			LOG.warn("Subscription ID '{}' not registered for periodic or on change notifications.", subscriptionID);
 		}
-	}// TODO changeNotification missing for modify subscription?
+	}
 
 	private void applyFilter() {
 		// TODO Applies the filters required for the specific subscription to

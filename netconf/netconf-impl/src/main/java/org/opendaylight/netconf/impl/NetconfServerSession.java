@@ -44,6 +44,7 @@ import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.netconf.mon
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.netconf.monitoring.rev101004.netconf.state.sessions.SessionKey;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.types.rev130715.DateAndTime;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.types.rev130715.ZeroBasedCounter32;
+import org.opendaylight.yangpushserver.impl.YangpushProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +59,7 @@ public final class NetconfServerSession extends AbstractNetconfSession<NetconfSe
     private ZonedDateTime loginTime;
     private long inRpcSuccess, inRpcFail, outRpcError, outNotification;
     private volatile boolean delayedClose;
+    private YangpushProvider ypProvider;
 
     public NetconfServerSession(final NetconfServerSessionListener sessionListener, final Channel channel, final long sessionId,
             final NetconfHelloMessageAdditionalHeader header) {
@@ -102,6 +104,7 @@ public final class NetconfServerSession extends AbstractNetconfSession<NetconfSe
     }
 
     public void onIncommingRpcSuccess() {
+    	ypProvider.onIncomingRpcSuccess(this);
         inRpcSuccess++;
     }
 
@@ -182,4 +185,8 @@ public final class NetconfServerSession extends AbstractNetconfSession<NetconfSe
         replaceMessageDecoder(new NetconfXMLToMessageDecoder());
         replaceMessageEncoderAfterNextMessage(new NetconfMessageToXMLEncoder());
     }
+
+	public void setYpProvider(YangpushProvider ypProvider) {
+		this.ypProvider = ypProvider;
+	}
 }
