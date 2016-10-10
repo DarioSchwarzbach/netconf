@@ -21,6 +21,8 @@ import org.opendaylight.controller.md.sal.common.api.data.ReadFailedException;
 import org.opendaylight.controller.md.sal.dom.api.DOMDataBroker;
 import org.opendaylight.controller.md.sal.dom.api.DOMDataReadTransaction;
 import org.opendaylight.netconf.util.NetconfUtil;
+import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.SubscriptionSuspended;
+import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.SubscriptionTerminated;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.PushChangeUpdate;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.PushUpdate;
 import org.opendaylight.yangpushserver.impl.YangpushProvider;
@@ -288,9 +290,9 @@ public class NotificationEngine {
 	}
 
 	/**
-	 * Used to send various OAM (Operation, Administration and Maintenance)
-	 * notifications like defined in 'draft-ietf-netconf-rfc5277bis-00'
-	 * (September 11, 2016).
+	 * Used to send various {@link OAMNotification} (Operation, Administration
+	 * and Maintenance) notifications like defined in
+	 * 'draft-ietf-netconf-rfc5277bis-00' (September 11, 2016).
 	 * 
 	 * @param subscriptionID
 	 *            The related subscription ID the notification is send for, if
@@ -298,14 +300,23 @@ public class NotificationEngine {
 	 * @param status
 	 *            Defines what specific notification is composed and send, using
 	 *            {@link OAMStatus}
+	 * @param reasonForSuspensionOrTermination
+	 *            The content for reason tag of {@link SubscriptionSuspended} or
+	 *            {@link SubscriptionTerminated} notifications. This parameter
+	 *            will be ignored if the status parameter is not a
+	 *            subscription_suspended or subscription_terminated
+	 *            {@link OAMStatus}
 	 */
-	public void oamNotification(String subscriptionID, OAMStatus status) {
+	public void oamNotification(String subscriptionID, OAMStatus status, String reasonForSuspensionOrTermination) {
 		if (subscriptionID != null) {
-			OAMNotification notification = new OAMNotification(XmlUtil.newDocument(), subscriptionID, status);
+			OAMNotification notification = new OAMNotification(XmlUtil.newDocument(), subscriptionID, status,
+					reasonForSuspensionOrTermination);
 
-			LOG.info("Sending '{}' notification for subscription with ID {}...", status, subscriptionID);
-			provider.pushNotification(notification, subscriptionID);
-			LOG.info("Notification '{}' for subscription with ID {} sent.", status, subscriptionID);
+			if (notification.getDocument() != null) {
+				LOG.info("Sending '{}' notification for subscription with ID {}...", status, subscriptionID);
+				provider.pushNotification(notification, subscriptionID);
+				LOG.info("Notification '{}' for subscription with ID {} sent.", status, subscriptionID);
+			}
 		} else {
 			// TODO Might be implemented and used to send OAM notifications that
 			// concern every client connected to the server.
@@ -316,7 +327,7 @@ public class NotificationEngine {
 	}
 
 	public static void main(String[] args) {
-		System.out.println(new OAMNotification(XmlUtil.newDocument(), "1", OAMStatus.notificationComplete));
+		System.out.println(new OAMNotification(XmlUtil.newDocument(), "3", OAMStatus.subscription_started, null));
 	}
 
 	/**
@@ -361,26 +372,6 @@ public class NotificationEngine {
 		handler.scheduleNotification(subscriptionID, subStartTime, subStopTime, dampeningPeriod, noSynchOnStart);
 		this.notificationListenerMap.put(subscriptionID, handler);
 		LOG.info("On change notification for subscription ID {} successfully registered", subscriptionID);
-	}
-
-	/**
-	 * Used to change the settings for one already existent notification related
-	 * to a specific subscription.
-	 * 
-	 * @param subscriptionID
-	 *            ID of the underlying subscription that was modified before by
-	 *            e.g. a RPC call
-	 */
-	public void modifyRegisteredNotification(String subscriptionID) {
-		if (notificationSchedulerMap.containsKey(subscriptionID)) {
-			unregisterNotification(subscriptionID);
-			registerPeriodicNotification(subscriptionID);
-		} else if (notificationListenerMap.containsKey(subscriptionID)) {
-			unregisterNotification(subscriptionID);
-			registerOnChangeNotification(subscriptionID);
-		} else {
-			LOG.error("No notification registered for subscription with ID {}", subscriptionID);
-		}
 	}
 
 	/**

@@ -161,6 +161,7 @@ public class OnChangeHandler implements AutoCloseable, DOMDataTreeChangeListener
 					SubscriptionEngine.getInstance().getSubscription(subscriptionID)
 							.setSubscriptionStreamStatus(SubscriptionStreamStatus.active);
 				}
+				NotificationEngine.getInstance().oamNotification(subscriptionID, OAMStatus.subscription_started, null);
 				registerListeners();
 			}
 		};
@@ -195,8 +196,8 @@ public class OnChangeHandler implements AutoCloseable, DOMDataTreeChangeListener
 					LOG.info(
 							"On change notification for subscription {} reached its stop time and the subscription will be deleted",
 							subscriptionID);
-					NotificationEngine.getInstance().oamNotification(subscriptionID, OAMStatus.notificationComplete);
 					NotificationEngine.getInstance().unregisterNotification(subscriptionID);
+					NotificationEngine.getInstance().oamNotification(subscriptionID, OAMStatus.notificationComplete, null);
 				}
 			}, deltaTillStop, TimeUnit.MILLISECONDS);
 			LOG.info("On change notification for subscription {} scheduled with stop time {}", subscriptionID,
