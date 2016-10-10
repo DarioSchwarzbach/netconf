@@ -14,11 +14,11 @@ import org.opendaylight.controller.md.sal.common.api.data.LogicalDatastoreType;
 import org.opendaylight.controller.md.sal.common.api.data.TransactionCommitFailedException;
 import org.opendaylight.controller.md.sal.dom.api.DOMDataBroker;
 import org.opendaylight.controller.md.sal.dom.api.DOMDataWriteTransaction;
-import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf._5277.netconf.rev160615.Stream;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.Encodings;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.Subscriptions;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.subscriptions.Subscription;
-import org.opendaylight.yangpushserver.subscription.SubscriptionEngine.operations;
+import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.Subscription1;
+import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.Subscription2;
 import org.opendaylight.yangtools.yang.common.QName;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.NodeIdentifier;
@@ -265,7 +265,7 @@ public class SubscriptionEngine {
 			break;
 		case modify:
 			if (checkIfSubscriptionExists(subscriptionInfo.getSubscriptionId())) {
-				// tx.merge(LogicalDatastoreType.OPERATIONAL, yid, men);
+				tx.merge(LogicalDatastoreType.OPERATIONAL, yid, men);
 				masterSubMap.put(subscriptionInfo.getSubscriptionId(), subscriptionInfo);
 				LOG.info("Subscription modified...");
 			} else {
@@ -297,5 +297,4 @@ public class SubscriptionEngine {
 	public SubscriptionInfo getSubscription(String subscriptionID) {
 		return this.masterSubMap.get(subscriptionID);
 	}
-
 }

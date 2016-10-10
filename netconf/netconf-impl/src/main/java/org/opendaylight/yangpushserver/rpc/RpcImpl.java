@@ -13,6 +13,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
 
 import javax.xml.transform.OutputKeys;
@@ -45,8 +46,6 @@ import org.opendaylight.yangpushserver.subscription.SubscriptionEngine.operation
 import org.opendaylight.yangpushserver.subscription.SubscriptionInfo;
 import org.opendaylight.yangpushserver.subscription.SubscriptionInfo.SubscriptionStreamStatus;
 import org.opendaylight.yangtools.yang.common.QName;
-import org.opendaylight.yangtools.yang.common.RpcError;
-import org.opendaylight.yangtools.yang.common.RpcResultBuilder;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.AugmentationIdentifier;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.NodeIdentifier;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.PathArgument;
@@ -197,7 +196,7 @@ public class RpcImpl implements DOMRpcImplementation {
 			LOG.info("This is a establish subscription RPC");
 			return establishSubscriptionRpcHandler(input);
 		} else if (rpc.equals(MODIFY_SUBSCRIPTION_RPC)) {
-			LOG.info("This is a modify subscrition RPC. Not supported yet...");
+			LOG.info("This is a modify subscrition RPC.");
 			return modifySubscriptionRpcHandler(input);
 		} else if (rpc.equals(DELETE_SUBSCRIPTION_RPC)) {
 			LOG.info("This is a delete subscrition RPC");
@@ -217,7 +216,6 @@ public class RpcImpl implements DOMRpcImplementation {
 	 ****************************************/
 	public ContainerNode createNormalizedNode() {
 		Long period = 30l;
-
 		// ContainerNode choice3 =
 		// Builders.containerBuilder().withNodeIdentifier(N_UPDATE_FILTER)
 		// .withChild(ImmutableNodes.leafNode(N_UPDATE_FILTER_NAME,
@@ -250,16 +248,20 @@ public class RpcImpl implements DOMRpcImplementation {
 			LOG.error(Errors.printError(errors.input_error));
 			return Futures.immediateFailedCheckedFuture(createDOMRpcException("Input missing or null"));
 		}
-
 		LOG.info("Going to parse RPC input");
 		// Parse input arg
 		SubscriptionInfo inputData = parseDeleteSubExternalRpcInput(input, error);
 		// parsing should have been 'ok'
 		LOG.info("Parsing complete");
 		LOG.info("Delete Subscription parsed Input: " + inputData.toString());
+		// Unregistering the notifications
 		notificationEngine.unregisterNotification(inputData.getSubscriptionId());
 		if (subscriptionEngine.checkIfSubscriptionExists(inputData.getSubscriptionId())) {
 			subscriptionEngine.updateMdSal(inputData, operations.delete);
+			ContainerNode output = createDeleteSubOutput(inputData);
+			provider.onDeletedSubscription(inputData.getSubscriptionId());
+			// TODO Here should OAM message with 'subscription delete' be sent
+			return Futures.immediateCheckedFuture((DOMRpcResult) new DefaultDOMRpcResult(output));
 		} else {
 			LOG.error("No such subscription with ID:" + inputData.getSubscriptionId());
 			// TODO remove this part!
@@ -270,15 +272,9 @@ public class RpcImpl implements DOMRpcImplementation {
 			return Futures.immediateFailedCheckedFuture(
 					createDOMRpcException("No such subscription with ID:" + inputData.getSubscriptionId()));
 		}
-		ContainerNode output = createDeleteSubOutput(inputData);
-		provider.onDeletedSubscription(inputData.getSubscriptionId());
-		// TODO Here should OAM message with 'subscription delete' be sent
-		return Futures.immediateCheckedFuture((DOMRpcResult) new DefaultDOMRpcResult(output));
 	}
 
 	private ContainerNode createDeleteSubOutput(SubscriptionInfo inputData) {
-		// ContainerNode subResult =
-		// Builders.containerBuilder().withNodeIdentifier(NodeIdentifier.create(Y_SUB_RESULT_NAME)).build();
 		final ContainerNode cn = Builders.containerBuilder().withNodeIdentifier(N_ESTABLISH_SUB_OUTPUT)
 				.withChild(ImmutableNodes.leafNode(N_SUB_RESULT_NAME, "ok")).build();
 		LOG.info("output node: " + cn);
@@ -296,7 +292,6 @@ public class RpcImpl implements DOMRpcImplementation {
 	private SubscriptionInfo parseDeleteSubExternalRpcInput(NormalizedNode<?, ?> input, String error) {
 		SubscriptionInfo dsri = new SubscriptionInfo();
 		ContainerNode conNode = null;
-
 		error = "";
 		if (input == null) {
 			error = Errors.printError(errors.input_error);
@@ -307,7 +302,6 @@ public class RpcImpl implements DOMRpcImplementation {
 		// NodeIdentifier subid = new NodeIdentifier(N_SUB_ID_NAME);
 		// ChoiceNode c1 = Builders.choiceBuilder().withNodeIdentifier(result)
 		// .withChild(ImmutableNodes.leafNode(subid, sidValue)).build();
-
 		if (input instanceof ContainerNode) {
 			// AugmentationNode an = (AugmentationNode)
 			// conNode.getValue().iterator().next();
@@ -407,7 +401,7 @@ public class RpcImpl implements DOMRpcImplementation {
 					"Wrong Subscription exists, neither on-Change nor periodic Subscription") {
 			});
 		}
-		ContainerNode output = createEstablishSubOutput(inputData.getSubscriptionId());
+		ContainerNode output = createEstablishAndModifySubOutput(inputData.getSubscriptionId());
 		provider.onEstablishedSubscription(inputData.getSubscriptionId());
 		// TODO Here should OAM message with 'subscription established' be sent
 		return Futures.immediateCheckedFuture((DOMRpcResult) new DefaultDOMRpcResult(output));
@@ -419,7 +413,7 @@ public class RpcImpl implements DOMRpcImplementation {
 	 * @param sid
 	 * @return containerNode for Create Subscription Output
 	 */
-	private ContainerNode createEstablishSubOutput(String sid) {
+	private ContainerNode createEstablishAndModifySubOutput(String sid) {
 		SubscriptionInfo subscriptionInfo = subscriptionEngine.getSubscription(sid);
 
 		NodeIdentifier result = new NodeIdentifier(N_RESULT_NAME);
@@ -428,6 +422,7 @@ public class RpcImpl implements DOMRpcImplementation {
 		NodeIdentifier period = new NodeIdentifier(Y_PERIOD_NAME);
 		NodeIdentifier dampeningPeriod = new NodeIdentifier(Y_DAMPENING_PERIOD_NAME);
 		NodeIdentifier noSynchOnStart = new NodeIdentifier(Y_NO_SYNCH_ON_START_NAME);
+		// Not yet supported
 		NodeIdentifier exlcludedChange = new NodeIdentifier(Y_EXCLUDED_CHANGE_NAME);
 
 		Long sidValue = Long.valueOf(sid);
@@ -481,11 +476,12 @@ public class RpcImpl implements DOMRpcImplementation {
 			return esri;
 		}
 		if (input instanceof ContainerNode) {
-			try {
+			try {			
 				// General variables before separate parsing starts..
 				conNode = (ContainerNode) input;
 				Set<QName> childNames = new HashSet<>();
-				AugmentationNode an = (AugmentationNode) conNode.getValue().iterator().next();
+				AugmentationNode an = getAugmentationNodeFromInput(input);
+				LOG.info("AugmentationNode: "+an);
 				LOG.info("Whole node: " + conNode);
 				// Whole example node
 
@@ -544,8 +540,8 @@ public class RpcImpl implements DOMRpcImplementation {
 				// TODO Use date instead of dateFuture for further work.
 				// DateFuture was needed for a special version of ncclient.
 				Date date = new Date();
-//				Long timeFuture = date.getTime() + 5000;
-//				Date dateFuture = new Date(timeFuture);
+				// Long timeFuture = date.getTime() + 5000;
+				// Date dateFuture = new Date(timeFuture);
 				// Remove timeFuture and dateFuture...
 				if (t.isPresent()) {
 					subStartTimeNode = (LeafNode<?>) t.get();
@@ -561,8 +557,7 @@ public class RpcImpl implements DOMRpcImplementation {
 								new SimpleDateFormat(YANG_DATEANDTIME_FORMAT_BLUEPRINT).format(date));
 					}
 				} else {
-					esri.setSubscriptionStarTime(
-							new SimpleDateFormat(YANG_DATEANDTIME_FORMAT_BLUEPRINT).format(date));
+					esri.setSubscriptionStarTime(new SimpleDateFormat(YANG_DATEANDTIME_FORMAT_BLUEPRINT).format(date));
 				}
 				LOG.info("Parsing sub-start-time complete : " + esri.getSubscriptionStartTime());
 				// IV Parse sub-stop-time
@@ -662,12 +657,6 @@ public class RpcImpl implements DOMRpcImplementation {
 					LOG.info("Parsing excluded-change complete : " + esri.getExcludedChange());
 				} else {
 					error = Errors.printError(errors.input_period_error);
-				}
-				// Check for Errors
-				if (!error.equals("")) {
-					LOG.error(error);
-					esri = null;
-					return esri;
 				}
 				LOG.info("Parsing update-trigger complete " + "P: " + esri.getPeriod() + " DP: "
 						+ esri.getDampeningPeriod());
@@ -793,6 +782,20 @@ public class RpcImpl implements DOMRpcImplementation {
 		return esri;
 	}
 
+	private AugmentationNode getAugmentationNodeFromInput(NormalizedNode<?, ?> input) {
+		LOG.info("Looking for AugmentationNode");
+		ContainerNode conNode = (ContainerNode) input;
+		Iterator<DataContainerChild<? extends PathArgument, ?>> itr = conNode.getValue().iterator();
+		while (itr.hasNext()){
+			Object next = itr.next();
+			if (next instanceof AugmentationNode){
+				AugmentationNode result = (AugmentationNode) next;
+				return result;
+			}
+		}
+		return null;
+	}
+
 	private boolean subStartTimeIsBeforeSystemTime(String subStartTime) {
 		Long currentTime = new Date().getTime();
 		DateFormat format = new SimpleDateFormat(PeriodicNotification.YANG_DATEANDTIME_FORMAT_BLUEPRINT);
@@ -806,7 +809,6 @@ public class RpcImpl implements DOMRpcImplementation {
 			LOG.error("Failed to parse subscription-start-time");
 			e.printStackTrace();
 		}
-
 		return false;
 	}
 
@@ -863,6 +865,9 @@ public class RpcImpl implements DOMRpcImplementation {
 		// }
 		// }
 		// Compare qos paramters: dscp, sub-dependecy and sub-priority
+		if (Integer.valueOf(esri.getSubscriptionId()) <= Integer.valueOf("0")) {
+			return result;
+		}
 		// Input should be checked now
 		result = true;
 		LOG.info("Correct Rpc Input");
@@ -884,43 +889,29 @@ public class RpcImpl implements DOMRpcImplementation {
 			LOG.error(Errors.printError(errors.input_error));
 			return Futures.immediateFailedCheckedFuture(createDOMRpcException("Input missing or null"));
 		}
-
 		LOG.info("Going to parse RPC input");
 		// Parse input arg
 		SubscriptionInfo inputData = parseEstablishAndModifySubExternalRpcInput(input, error, false);
 		// parsing should have been 'ok'
 		LOG.info("Parsing complete");
-		// get subscription id from subscription engine.
-		sid = this.subscriptionEngine.generateSubscriptionId();
-		LOG.info(sid);
-		inputData.setSubscription_id(sid);
-
 		// Saving the Subscription Information locally & on MDSAL datastore
 		this.subscriptionEngine.updateMdSal(inputData, operations.modify);
-
-		// The novel Notifications will be registered
-		if (!inputData.getDampeningPeriod().equals(null)) {
+		// Unregistering the notifications
+		notificationEngine.unregisterNotification(inputData.getSubscriptionId());
+		// The novel notifications will be registered	
+		if (inputData.getDampeningPeriod() != null) {
 			notificationEngine.registerOnChangeNotification(inputData.getSubscriptionId());
 			LOG.info("Register on-Change-Notifications");
-		} else if (!inputData.getPeriod().equals(null)) {
+		} else if (inputData.getPeriod() != null) {
 			notificationEngine.registerPeriodicNotification(inputData.getSubscriptionId());
 			LOG.info("Register periodic-Notifications");
 		} else {
 			LOG.error("Wrong Subscription exists, neither on-Change nor periodic Subscription");
-
 			return Futures.immediateFailedCheckedFuture(
 					createDOMRpcException("Wrong Subscription exists, neither on-Change nor periodic Subscription"));
 		}
-		output = createModifySubOutput(inputData.getSubscriptionId());
+		output = createEstablishAndModifySubOutput(inputData.getSubscriptionId());
 		// TODO Here should OAM message with 'subscription modify' be sent
 		return Futures.immediateCheckedFuture((DOMRpcResult) new DefaultDOMRpcResult(output));
-	}
-
-	private ContainerNode createModifySubOutput(String sid) {
-		ContainerNode cn = null;
-		cn = Builders.containerBuilder().withNodeIdentifier(N_ESTABLISH_SUB_OUTPUT)
-				.withChild(ImmutableNodes.leafNode(N_RESULT_NAME, "ok"))
-				.withChild(ImmutableNodes.leafNode(N_SUB_ID_NAME, sid)).build();
-		return cn;
 	}
 }
