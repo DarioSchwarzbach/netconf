@@ -77,7 +77,8 @@ public class PeriodicNotificationScheduler implements AutoCloseable {
 							.setSubscriptionStreamStatus(SubscriptionStreamStatus.active);
 				}
 				if (isTriggeredForTheFirstTime) {
-					NotificationEngine.getInstance().oamNotification(subscriptionID, OAMStatus.subscription_started, null);
+					NotificationEngine.getInstance().oamNotification(subscriptionID, OAMStatus.subscription_started,
+							null);
 					isTriggeredForTheFirstTime = false;
 				}
 				LOG.info("Periodic notification for subscription {} is triggered", subscriptionID);
@@ -111,13 +112,14 @@ public class PeriodicNotificationScheduler implements AutoCloseable {
 
 				@Override
 				public void run() {
-					SubscriptionInfo subscription = SubscriptionEngine.getInstance().getSubscription(subscriptionID);
-					SubscriptionEngine.getInstance().updateMdSal(subscription, operations.delete);
 					LOG.info(
 							"Periodic notification for subscription {} reached its stop time and the subscription will be deleted",
 							subscriptionID);
 					NotificationEngine.getInstance().unregisterNotification(subscriptionID);
-					NotificationEngine.getInstance().oamNotification(subscriptionID, OAMStatus.notificationComplete, null);
+					NotificationEngine.getInstance().oamNotification(subscriptionID, OAMStatus.notificationComplete,
+							null);
+					SubscriptionInfo subscription = SubscriptionEngine.getInstance().getSubscription(subscriptionID);
+					SubscriptionEngine.getInstance().updateMdSal(subscription, operations.delete);
 				}
 			}, deltaTillStop, TimeUnit.MILLISECONDS);
 			LOG.info("Periodic notification for subscription {} scheduled with stop time {}", subscriptionID, stopTime);

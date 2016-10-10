@@ -191,13 +191,14 @@ public class OnChangeHandler implements AutoCloseable, DOMDataTreeChangeListener
 
 				@Override
 				public void run() {
-					SubscriptionInfo subscription = SubscriptionEngine.getInstance().getSubscription(subscriptionID);
-					SubscriptionEngine.getInstance().updateMdSal(subscription, operations.delete);
 					LOG.info(
 							"On change notification for subscription {} reached its stop time and the subscription will be deleted",
 							subscriptionID);
 					NotificationEngine.getInstance().unregisterNotification(subscriptionID);
-					NotificationEngine.getInstance().oamNotification(subscriptionID, OAMStatus.notificationComplete, null);
+					NotificationEngine.getInstance().oamNotification(subscriptionID, OAMStatus.notificationComplete,
+							null);
+					SubscriptionInfo subscription = SubscriptionEngine.getInstance().getSubscription(subscriptionID);
+					SubscriptionEngine.getInstance().updateMdSal(subscription, operations.delete);
 				}
 			}, deltaTillStop, TimeUnit.MILLISECONDS);
 			LOG.info("On change notification for subscription {} scheduled with stop time {}", subscriptionID,

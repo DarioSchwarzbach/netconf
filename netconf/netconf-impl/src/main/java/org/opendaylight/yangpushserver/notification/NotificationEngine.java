@@ -315,6 +315,9 @@ public class NotificationEngine {
 			if (notification.getDocument() != null) {
 				LOG.info("Sending '{}' notification for subscription with ID {}...", status, subscriptionID);
 				provider.pushNotification(notification, subscriptionID);
+				if (status == OAMStatus.notificationComplete) {
+					provider.onDeletedSubscription(subscriptionID);
+				}
 				LOG.info("Notification '{}' for subscription with ID {} sent.", status, subscriptionID);
 			}
 		} else {

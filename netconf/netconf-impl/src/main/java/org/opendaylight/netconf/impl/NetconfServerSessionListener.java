@@ -57,6 +57,7 @@ public class NetconfServerSessionListener implements NetconfSessionListener<Netc
 
     public void onDown(final NetconfServerSession netconfNetconfServerSession) {
         monitoringSessionListener.onSessionDown(netconfNetconfServerSession);
+        netconfNetconfServerSession.ypProviderOnDown();
 
         try {
             operationRouter.close();

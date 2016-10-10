@@ -23,6 +23,7 @@ import org.opendaylight.netconf.impl.NetconfServerSession;
 import org.opendaylight.yangpushserver.notification.NotificationEngine;
 import org.opendaylight.yangpushserver.rpc.RpcImpl;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine;
+import org.opendaylight.yangpushserver.subscription.SubscriptionEngine.operations;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -143,6 +144,8 @@ public class YangpushProvider implements Provider, AutoCloseable {
 	 *            ID of the new subscription
 	 */
 	public void onEstablishedSubscription(String subscriptionId) {
+		LOG.debug("Subscription with ID {} established.", subscriptionId);
+
 		if (latestEstablishedSubscriptionID.equals(priorEstablishedSubscriptionID)) {
 			latestEstablishedSubscriptionID = subscriptionId;
 		} else {
@@ -158,6 +161,7 @@ public class YangpushProvider implements Provider, AutoCloseable {
 	 *            ID of the deleted subscription
 	 */
 	public void onDeletedSubscription(String subscriptionId) {
+		LOG.debug("Subscription with ID {} deleted. Deleting from related session");
 		for (NetconfServerSession sessionKey : serverSessionToSubIds.keySet()) {
 			Set<String> toRemove = new HashSet<>();
 			for (String subIDValue : serverSessionToSubIds.get(sessionKey)) {
@@ -167,5 +171,21 @@ public class YangpushProvider implements Provider, AutoCloseable {
 			}
 			serverSessionToSubIds.get(sessionKey).removeAll(toRemove);
 		}
+	}
+
+	/**
+	 * Notifies the provider if an existing netconf server session goes down for
+	 * whatever reason
+	 * 
+	 * @param netconfServerSession
+	 *            Session that is down
+	 */
+	public void onSessionDown(NetconfServerSession netconfServerSession) {
+		LOG.info("Session {} down. Deleting all related subscriptions", netconfServerSession);
+		for (String subID : serverSessionToSubIds.get(netconfServerSession)) {
+			this.notificationEngine.unregisterNotification(subID);
+			this.subEngine.updateMdSal(this.subEngine.getSubscription(subID), operations.delete);
+		}
+		serverSessionToSubIds.remove(netconfServerSession);
 	}
 }

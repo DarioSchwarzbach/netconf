@@ -189,4 +189,8 @@ public final class NetconfServerSession extends AbstractNetconfSession<NetconfSe
 	public void setYpProvider(YangpushProvider ypProvider) {
 		this.ypProvider = ypProvider;
 	}
+
+	public void ypProviderOnDown() {
+		this.ypProvider.onSessionDown(this);	
+	}
 }
