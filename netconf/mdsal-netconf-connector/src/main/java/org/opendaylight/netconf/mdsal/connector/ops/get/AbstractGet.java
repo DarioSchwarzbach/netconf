@@ -152,7 +152,7 @@ public abstract class AbstractGet extends AbstractSingletonNetconfOperation {
 
         if (filterElement.getChildElements().size() != 1) {
             throw new DocumentedException("Multiple filter roots not supported yet",
-                    ErrorType.application, ErrorTag.operation_not_supported, ErrorSeverity.error);
+                    ErrorType.APPLICATION, ErrorTag.OPERATION_NOT_SUPPORTED, ErrorSeverity.ERROR);
         }
 
         XmlElement element = filterElement.getOnlyChildElement();

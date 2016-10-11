@@ -209,23 +209,24 @@ public final class OAMNotification extends NetconfMessage {
 				stopTime.setTextContent(underlyingSubscription.getStopTime());
 				notifiationType.appendChild(stopTime);
 			}
-			// TODO Add filter-type case tag to the notification
-			// if (underlyingSubscription.getFilter() != null) {
-			// final Element byReference =
-			// notificationContent.createElement(PeriodicNotification.SUB_ID);
-			// final Element filterRef =
-			// notificationContent.createElement(PeriodicNotification.SUB_ID);
-			//
-			// final Element rfc5277 =
-			// notificationContent.createElement(PeriodicNotification.SUB_ID);
-			//
-			// final Element updateFilter =
-			// notificationContent.createElement(PeriodicNotification.SUB_ID);
-			// final Element subtree =
-			// notificationContent.createElement(PeriodicNotification.SUB_ID);
-			// final Element xpath =
-			// notificationContent.createElement(PeriodicNotification.SUB_ID);
-			// }
+			// TODO Add other filter-types then subtree only and remove hard
+			// coded creation of subtree filter
+			if (underlyingSubscription.getFilter() != null) {
+				// final Element byReference =
+				// notificationContent.createElement(PeriodicNotification.SUB_ID);
+				// final Element filterRef =
+				// notificationContent.createElement(PeriodicNotification.SUB_ID);
+				//
+				// final Element rfc5277 =
+				// notificationContent.createElement(PeriodicNotification.SUB_ID);
+				//
+				final Element updateFilter = notificationContent.createElement("update-filter");
+				updateFilter.setAttribute("xmlns", "urn:ietf:params:xml:ns:netconf:notification:1.1");
+				updateFilter.setAttribute("type", "subtree");
+				updateFilter.setTextContent(XmlUtil.toString((Element) underlyingSubscription.getFilter().getNode()));
+				// final Element xpath =
+				// notificationContent.createElement(PeriodicNotification.SUB_ID);
+			}
 			// choice filter-type {
 			// case by-reference {
 			// leaf filter-ref {

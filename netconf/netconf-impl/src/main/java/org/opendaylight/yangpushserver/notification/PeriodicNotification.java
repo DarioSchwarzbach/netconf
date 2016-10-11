@@ -108,7 +108,7 @@ public final class PeriodicNotification extends NetconfMessage {
 		Preconditions.checkNotNull(notificationContent);
 		Preconditions.checkNotNull(eventTime);
 
-		LOG.info("Start wrapping content {} for periodic notification of subscription with ID {}...",
+		LOG.debug("Start wrapping content {} for periodic notification of subscription with ID {}...",
 				XmlUtil.toString(notificationContent), subscriptionID);
 		String encoding = SubscriptionEngine.getInstance().getSubscription(subscriptionID).getEncoding();
 
@@ -181,7 +181,6 @@ public final class PeriodicNotification extends NetconfMessage {
 			notificationContent.appendChild(entireNotification);
 			LOG.info("Content for periodic notification for subscription {} successfully wrapped: {}", subscriptionID,
 					XmlUtil.toString(notificationContent));
-
 			return notificationContent;
 		}
 	}

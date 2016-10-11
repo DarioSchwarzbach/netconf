@@ -156,9 +156,9 @@ public abstract class AbstractWriteTx implements DOMDataWriteTransaction {
                     if(!domRpcResult.getErrors().isEmpty() && !transformed.isDone()) {
                         NetconfDocumentedException exception =
                                 new NetconfDocumentedException(id + ":RPC during tx failed",
-                                        DocumentedException.ErrorType.application,
-                                        DocumentedException.ErrorTag.operation_failed,
-                                        DocumentedException.ErrorSeverity.error);
+                                        DocumentedException.ErrorType.APPLICATION,
+                                        DocumentedException.ErrorTag.OPERATION_FAILED,
+                                        DocumentedException.ErrorSeverity.ERROR);
                         transformed.setException(exception);
                     }
                 });
@@ -174,9 +174,9 @@ public abstract class AbstractWriteTx implements DOMDataWriteTransaction {
                         new NetconfDocumentedException(
                                 new DocumentedException(id + ":RPC during tx returned an exception",
                                         new Exception(throwable),
-                                        DocumentedException.ErrorType.application,
-                                        DocumentedException.ErrorTag.operation_failed,
-                                        DocumentedException.ErrorSeverity.error) );
+                                        DocumentedException.ErrorType.APPLICATION,
+                                        DocumentedException.ErrorTag.OPERATION_FAILED,
+                                        DocumentedException.ErrorSeverity.ERROR) );
                 transformed.setException(exception);
             }
         });

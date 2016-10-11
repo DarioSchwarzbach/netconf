@@ -63,9 +63,9 @@ public class NetconfDocumentedExceptionTest {
     public void testToAndFromXMLDocument() throws XPathExpressionException {
         String errorMessage = "mock error message";
         DocumentedException ex = new NetconfDocumentedException( errorMessage, null,
-                                                                        DocumentedException.ErrorType.protocol,
-                                                                        DocumentedException.ErrorTag.data_exists,
-                                                                        DocumentedException.ErrorSeverity.warning,
+                                                                        DocumentedException.ErrorType.PROTOCOL,
+                                                                        DocumentedException.ErrorTag.DATA_EXISTS,
+                                                                        DocumentedException.ErrorSeverity.WARNING,
                                                                         ImmutableMap.of( "foo", "bar" ) );
 
         Document doc = ex.toXMLDocument();
@@ -81,17 +81,17 @@ public class NetconfDocumentedExceptionTest {
 
         Node errorTypeNode = getNode( "netconf:error-type", rpcErrorNode );
         assertNotNull( "error-type not found", errorTypeNode );
-        assertEquals( "error-type", DocumentedException.ErrorType.protocol.getTagValue(),
+        assertEquals( "error-type", DocumentedException.ErrorType.PROTOCOL.getTagValue(),
                       errorTypeNode.getTextContent() );
 
         Node errorTagNode = getNode( "netconf:error-tag", rpcErrorNode );
         assertNotNull( "error-tag not found", errorTagNode );
-        assertEquals( "error-tag", DocumentedException.ErrorTag.data_exists.getTagValue(),
+        assertEquals( "error-tag", DocumentedException.ErrorTag.DATA_EXISTS.getTagValue(),
                       errorTagNode.getTextContent() );
 
         Node errorSeverityNode = getNode( "netconf:error-severity", rpcErrorNode );
         assertNotNull( "error-severity not found", errorSeverityNode );
-        assertEquals( "error-severity", DocumentedException.ErrorSeverity.warning.getTagValue(),
+        assertEquals( "error-severity", DocumentedException.ErrorSeverity.WARNING.getTagValue(),
                       errorSeverityNode.getTextContent() );
 
         Node errorInfoNode = getNode( "netconf:error-info/netconf:foo", rpcErrorNode );
@@ -107,9 +107,9 @@ public class NetconfDocumentedExceptionTest {
         ex = DocumentedException.fromXMLDocument( doc );
 
         assertNotNull( "NetconfDocumentedException is null", ex );
-        assertEquals( "getErrorSeverity", DocumentedException.ErrorSeverity.warning, ex.getErrorSeverity() );
-        assertEquals( "getErrorTag", DocumentedException.ErrorTag.data_exists, ex.getErrorTag() );
-        assertEquals( "getErrorType", DocumentedException.ErrorType.protocol, ex.getErrorType() );
+        assertEquals( "getErrorSeverity", DocumentedException.ErrorSeverity.WARNING, ex.getErrorSeverity() );
+        assertEquals( "getErrorTag", DocumentedException.ErrorTag.DATA_EXISTS, ex.getErrorTag() );
+        assertEquals( "getErrorType", DocumentedException.ErrorType.PROTOCOL, ex.getErrorType() );
         assertEquals( "getLocalizedMessage", errorMessage, ex.getLocalizedMessage() );
         assertEquals( "getErrorInfo", ImmutableMap.of( "foo", "bar" ), ex.getErrorInfo() );
     }

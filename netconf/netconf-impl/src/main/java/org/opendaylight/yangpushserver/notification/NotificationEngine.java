@@ -14,7 +14,10 @@ import java.util.Map;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 import javax.xml.transform.dom.DOMResult;
+import javax.xml.transform.dom.DOMSource;
 
+import org.opendaylight.controller.config.util.xml.DocumentedException;
+import org.opendaylight.controller.config.util.xml.XmlElement;
 import org.opendaylight.controller.config.util.xml.XmlUtil;
 import org.opendaylight.controller.md.sal.common.api.data.LogicalDatastoreType;
 import org.opendaylight.controller.md.sal.common.api.data.ReadFailedException;
@@ -39,6 +42,7 @@ import org.opendaylight.yangtools.yang.model.api.SchemaPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.CheckedFuture;
@@ -176,11 +180,30 @@ public class NotificationEngine {
 			} catch (IOException | XMLStreamException e) {
 				LOG.warn("Transforming normalized node to dom result failed:", e);
 			}
-			applyFilter(); // TODO
-			PeriodicNotification notification = new PeriodicNotification((Document) result.getNode(), subscriptionID);
+
+			PeriodicNotification notification = null;
+			// Apply subtree filter if set
+			if (SubscriptionEngine.getInstance().getSubscription(subscriptionID).getFilter() != null) {
+				DOMSource filterSource = SubscriptionEngine.getInstance().getSubscription(subscriptionID).getFilter();
+				XmlElement filter = XmlElement.fromDomElement((Element) filterSource.getNode());
+				try {
+					Optional<Document> optionalFilteredData = SubtreeFilter.applySubtreeNotificationFilter(filter,
+							(Document) result.getNode());
+					if (optionalFilteredData != null && optionalFilteredData.isPresent()) {
+						notification = new PeriodicNotification(optionalFilteredData.get(), subscriptionID);
+					} else {
+						LOG.warn(
+								"Filtering notification content failed due to missing match for given filter. Proceeding with unfiltered content...");
+						notification = new PeriodicNotification((Document) result.getNode(), subscriptionID);
+					}
+				} catch (DocumentedException e) {
+					LOG.error("Applying subtree filter to noitifcation content failed: {}", e);
+				}
+			} else {
+				notification = new PeriodicNotification((Document) result.getNode(), subscriptionID);
+			}
 			// TODO Maybe move this part to the provider itself to later manage
 			// other transport options
-			LOG.info("Sending periodic notification for subscription with ID {}...", subscriptionID);
 			provider.pushNotification(notification, subscriptionID);
 			LOG.info("Periodic notification for subscription with ID {} sent.", subscriptionID);
 		} else {
@@ -236,12 +259,30 @@ public class NotificationEngine {
 			} catch (IOException | XMLStreamException e) {
 				LOG.warn("Transforming normalized node to dom result failed:", e);
 			}
-			applyFilter(); // TODO
-			PeriodicNotification notification = new PeriodicNotification((Document) result.getNode(), subscriptionID);
+
+			PeriodicNotification notification = null;
+			// Apply subtree filter if set
+			if (SubscriptionEngine.getInstance().getSubscription(subscriptionID).getFilter() != null) {
+				DOMSource filterSource = SubscriptionEngine.getInstance().getSubscription(subscriptionID).getFilter();
+				XmlElement filter = XmlElement.fromDomElement((Element) filterSource.getNode());
+				try {
+					Optional<Document> optionalFilteredData = SubtreeFilter.applySubtreeNotificationFilter(filter,
+							(Document) result.getNode());
+					if (optionalFilteredData != null && optionalFilteredData.isPresent()) {
+						notification = new PeriodicNotification(optionalFilteredData.get(), subscriptionID);
+					} else {
+						LOG.warn(
+								"Filtering notification content failed due to missing match for given filter. Proceeding with unfiltered content...");
+						notification = new PeriodicNotification((Document) result.getNode(), subscriptionID);
+					}
+				} catch (DocumentedException e) {
+					LOG.error("Applying subtree filter to noitifcation content failed: {}", e);
+				}
+			} else {
+				notification = new PeriodicNotification((Document) result.getNode(), subscriptionID);
+			}
 			// TODO Maybe move this part to the provider itself to later manage
 			// other transport options
-			LOG.info("Sending second periodic notification (CONFIGURATION) for subscription with ID {}...",
-					subscriptionID);
 			provider.pushNotification(notification, subscriptionID);
 			LOG.info("Second periodic notification for subscription with ID {} sent (CONFIGURATION).", subscriptionID);
 		} else {
@@ -277,9 +318,27 @@ public class NotificationEngine {
 			} catch (IOException | XMLStreamException e) {
 				LOG.warn("Transforming normalized node to dom result failed:", e);
 			}
-			applyFilter(); // TODO
-			OnChangeNotification notification = new OnChangeNotification((Document) result.getNode(), subscriptionID);
-			LOG.info("Sending on change notification for subscription with ID {}...", subscriptionID);
+			OnChangeNotification notification = null;
+			// Apply subtree filter if set
+			if (SubscriptionEngine.getInstance().getSubscription(subscriptionID).getFilter() != null) {
+				DOMSource filterSource = SubscriptionEngine.getInstance().getSubscription(subscriptionID).getFilter();
+				XmlElement filter = XmlElement.fromDomElement((Element) filterSource.getNode());
+				try {
+					Optional<Document> optionalFilteredData = SubtreeFilter.applySubtreeNotificationFilter(filter,
+							(Document) result.getNode());
+					if (optionalFilteredData != null && optionalFilteredData.isPresent()) {
+						notification = new OnChangeNotification(optionalFilteredData.get(), subscriptionID);
+					} else {
+						LOG.warn(
+								"Filtering notification content failed due to missing match for given filter. Proceeding with unfiltered content...");
+						notification = new OnChangeNotification((Document) result.getNode(), subscriptionID);
+					}
+				} catch (DocumentedException e) {
+					LOG.error("Applying subtree filter to noitifcation content failed: {}", e);
+				}
+			} else {
+				notification = new OnChangeNotification((Document) result.getNode(), subscriptionID);
+			}
 			provider.pushNotification(notification, subscriptionID);
 			LOG.info("On change notification for subscription with ID {} sent.", subscriptionID);
 
@@ -421,7 +480,7 @@ public class NotificationEngine {
 						.forStreamWriter(normalizedNodeStreamWriter)) {
 			normalizedNodeWriter.write(normalized);
 			normalizedNodeWriter.flush();
-			LOG.info("Data {} successfully transformed to XML", normalized);
+			LOG.debug("Data {} successfully transformed to XML", normalized);
 		} finally {
 			try {
 				if (writer != null) {
