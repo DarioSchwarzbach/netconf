@@ -274,7 +274,9 @@ public class SubscriptionEngine {
 					.withChild(ImmutableNodes.leafNode(dscp, dscpValue))
 					.withChild(ImmutableNodes.leafNode(startTime, subscriptionInfo.getStartTime()))
 					.withChild(ImmutableNodes.leafNode(stopTime, subscriptionInfo.getStopTime()))
-					.withChild(ImmutableNodes.leafNode(encoding, subscriptionInfo.getEncoding())).withChild(c3).build();
+					.withChild(ImmutableNodes.leafNode(encoding, subscriptionInfo.getEncoding()))
+					// .withChild(c3)
+					.build();
 		} else {
 			men = ImmutableNodes.mapEntryBuilder().withNodeIdentifier(p)
 					// Part where Siegert should add the 'call_home' parameter
@@ -340,7 +342,7 @@ public class SubscriptionEngine {
 		}
 		LOG.info("MD-SAL has been updated");
 	}
-	
+
 	/**
 	 * Checks if the subscription aleady exists.
 	 * 
