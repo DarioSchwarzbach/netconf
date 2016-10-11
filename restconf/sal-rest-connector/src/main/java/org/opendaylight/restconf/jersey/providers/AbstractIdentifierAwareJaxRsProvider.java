@@ -6,7 +6,7 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-package org.opendaylight.restconf.utils.patch;
+package org.opendaylight.restconf.jersey.providers;
 
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Request;
@@ -16,7 +16,7 @@ import org.opendaylight.netconf.sal.restconf.impl.ControllerContext;
 import org.opendaylight.netconf.sal.restconf.impl.InstanceIdentifierContext;
 import org.opendaylight.restconf.utils.parser.ParserIdentifier;
 
-public class Draft16AbstractIdentifierAwareJaxRsProvider {
+public class AbstractIdentifierAwareJaxRsProvider {
 
     private static final String POST = "POST";
 
@@ -41,5 +41,13 @@ public class Draft16AbstractIdentifierAwareJaxRsProvider {
 
     protected boolean isPost() {
         return POST.equals(this.request.getMethod());
+    }
+
+    void setUriInfo(final UriInfo uriInfo) {
+        this.uriInfo = uriInfo;
+    }
+
+    void setRequest(final Request request) {
+        this.request = request;
     }
 }

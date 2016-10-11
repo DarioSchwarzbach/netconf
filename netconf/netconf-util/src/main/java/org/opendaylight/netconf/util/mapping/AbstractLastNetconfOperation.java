@@ -16,13 +16,13 @@ import org.w3c.dom.Element;
 
 public abstract class AbstractLastNetconfOperation extends AbstractNetconfOperation {
 
-    protected AbstractLastNetconfOperation(String netconfSessionIdForReporting) {
+    protected AbstractLastNetconfOperation(final String netconfSessionIdForReporting) {
         super(netconfSessionIdForReporting);
     }
 
     @Override
-    protected Element handle(Document document, XmlElement operationElement,
-            NetconfOperationChainedExecution subsequentOperation) throws DocumentedException {
+    protected Element handle(final Document document, final XmlElement operationElement,
+                             final NetconfOperationChainedExecution subsequentOperation) throws DocumentedException {
         if (!subsequentOperation.isExecutionTermination()){
             throw new DocumentedException(String.format("No netconf operation expected to be subsequent to %s, but is %s", this, subsequentOperation),
                     DocumentedException.ErrorType.APPLICATION,

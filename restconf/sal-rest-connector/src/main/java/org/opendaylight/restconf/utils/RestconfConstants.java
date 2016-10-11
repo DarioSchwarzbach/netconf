@@ -17,13 +17,13 @@ import java.text.SimpleDateFormat;
 public final class RestconfConstants {
 
     public static final String XML = "+xml";
-    public static final String XML_ORIG = "-xml";
     public static final String JSON = "+json";
     public static final String MOUNT = "yang-ext:mount";
     public static final String IDENTIFIER = "identifier";
     public static final SimpleDateFormat REVISION_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
     public static final char SLASH = '/';
     public static final Splitter SLASH_SPLITTER = Splitter.on(SLASH);
+    public static final String DRAFT_PATTERN = "restconf/17";
 
     private RestconfConstants() {
         throw new UnsupportedOperationException("Util class");

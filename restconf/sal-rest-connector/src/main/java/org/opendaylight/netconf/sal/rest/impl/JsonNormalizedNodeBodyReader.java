@@ -30,7 +30,7 @@ import org.opendaylight.netconf.sal.restconf.impl.NormalizedNodeContext;
 import org.opendaylight.netconf.sal.restconf.impl.RestconfDocumentedException;
 import org.opendaylight.netconf.sal.restconf.impl.RestconfError.ErrorTag;
 import org.opendaylight.netconf.sal.restconf.impl.RestconfError.ErrorType;
-import org.opendaylight.restconf.Draft16;
+import org.opendaylight.restconf.Draft17;
 import org.opendaylight.restconf.utils.RestconfConstants;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier;
 import org.opendaylight.yangtools.yang.data.api.schema.AugmentationNode;
@@ -53,7 +53,7 @@ import org.slf4j.LoggerFactory;
 
 @Provider
 @Consumes({ Draft02.MediaTypes.DATA + RestconfService.JSON, Draft02.MediaTypes.OPERATION + RestconfService.JSON,
-        Draft16.MediaTypes.DATA + RestconfConstants.JSON, MediaType.APPLICATION_JSON })
+        Draft17.MediaTypes.DATA + RestconfConstants.JSON, MediaType.APPLICATION_JSON })
 public class JsonNormalizedNodeBodyReader extends AbstractIdentifierAwareJaxRsProvider implements MessageBodyReader<NormalizedNodeContext> {
 
     private final static Logger LOG = LoggerFactory.getLogger(JsonNormalizedNodeBodyReader.class);
@@ -70,7 +70,14 @@ public class JsonNormalizedNodeBodyReader extends AbstractIdentifierAwareJaxRsPr
             final MultivaluedMap<String, String> httpHeaders, final InputStream entityStream) throws IOException,
             WebApplicationException {
         try {
-            return readFrom(getInstanceIdentifierContext(), entityStream, isPost());
+            if (getUriInfo().getAbsolutePath().getPath().contains(RestconfConstants.DRAFT_PATTERN)) {
+                final org.opendaylight.restconf.jersey.providers.JsonNormalizedNodeBodyReader jsonReaderNewRest =
+                        new org.opendaylight.restconf.jersey.providers.JsonNormalizedNodeBodyReader();
+                jsonReaderNewRest.injectParams(getUriInfo(), getRequest());
+                return jsonReaderNewRest.readFrom(type, genericType, annotations, mediaType, httpHeaders, entityStream);
+            } else {
+                return readFrom(getInstanceIdentifierContext(), entityStream, isPost());
+            }
         } catch (final Exception e) {
             propagateExceptionAs(e);
             return null; // no-op
