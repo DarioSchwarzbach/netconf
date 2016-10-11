@@ -160,8 +160,8 @@ public class SubscriptionEngine {
 		NodeIdentifier filtertype = new NodeIdentifier(N_SUBTREE_FILTER_TYPE_NAME);
 		NodeIdentifier subtreeFilter = new NodeIdentifier(Y_SUBTREE_FILTER_NAME);
 		NodeIdentifier updateFilter = new NodeIdentifier(Y_UPDATE_FILTER_NAME);
+		// Part where Siegert should add the 'call_home' parameter QNAME
 
-		
 		if (type.equals(operations.delete)) {
 			subscriptionInfo = this.getSubscription(subscriptionInfo.getSubscriptionId());
 		}
@@ -203,15 +203,14 @@ public class SubscriptionEngine {
 		ChoiceNode c3 = null;
 		MapEntryNode men = null;
 		if (!(subscriptionInfo.getFilter() == null)) {
-			AnyXmlNode test = Builders.anyXmlBuilder().withNodeIdentifier(subtreeFilter).withValue(subscriptionInfo.getFilter()).build();
-			ChoiceNode c4 = Builders.choiceBuilder().withNodeIdentifier(updateFilter).withChild(test)
-					.build();
-			c3 = Builders.choiceBuilder().withChild(c4).withNodeIdentifier(filtertype)
-					.build();
-						
-			men = ImmutableNodes.mapEntryBuilder().withNodeIdentifier(p)
-					.withChild(c2)
-//					.withChild(c3)
+			AnyXmlNode test = Builders.anyXmlBuilder().withNodeIdentifier(subtreeFilter)
+					.withValue(subscriptionInfo.getFilter()).build();
+			ChoiceNode c4 = Builders.choiceBuilder().withNodeIdentifier(updateFilter).withChild(test).build();
+			c3 = Builders.choiceBuilder().withChild(c4).withNodeIdentifier(filtertype).build();
+
+			men = ImmutableNodes.mapEntryBuilder().withNodeIdentifier(p).withChild(c2)
+					// Part where Siegert should add the 'call_home' parameter NODE
+					// .withChild(c3)
 					.withChild(ImmutableNodes.leafNode(stream, subscriptionInfo.getStream()))
 					.withChild(ImmutableNodes.leafNode(subStartTime, subscriptionInfo.getSubscriptionStartTime()))
 					.withChild(ImmutableNodes.leafNode(subStopTime, subscriptionInfo.getSubscriptionStopTime()))
@@ -223,6 +222,7 @@ public class SubscriptionEngine {
 					.withChild(ImmutableNodes.leafNode(encoding, subscriptionInfo.getEncoding())).build();
 		} else {
 			men = ImmutableNodes.mapEntryBuilder().withNodeIdentifier(p)
+					// Part where Siegert should add the 'call_home' parameter NODE
 					// .withChild(ImmutableNodes.leafNode(updateTrigger,
 					// subscriptionInfo.getUpdateTrigger()))
 					.withChild(c2).withChild(ImmutableNodes.leafNode(stream, subscriptionInfo.getStream()))
