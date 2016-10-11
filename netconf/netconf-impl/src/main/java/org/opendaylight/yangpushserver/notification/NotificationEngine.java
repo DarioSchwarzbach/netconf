@@ -197,7 +197,10 @@ public class NotificationEngine {
 						notification = new PeriodicNotification((Document) result.getNode(), subscriptionID);
 					}
 				} catch (DocumentedException e) {
-					LOG.error("Applying subtree filter to noitifcation content failed: {}", e);
+					LOG.warn(
+							"Applying subtree filter to noitifcation content failed. Proceeding with unfiltered content...",
+							e);
+					notification = new PeriodicNotification((Document) result.getNode(), subscriptionID);
 				}
 			} else {
 				notification = new PeriodicNotification((Document) result.getNode(), subscriptionID);
@@ -276,7 +279,10 @@ public class NotificationEngine {
 						notification = new PeriodicNotification((Document) result.getNode(), subscriptionID);
 					}
 				} catch (DocumentedException e) {
-					LOG.error("Applying subtree filter to noitifcation content failed: {}", e);
+					LOG.warn(
+							"Applying subtree filter to noitifcation content failed. Proceeding with unfiltered content...",
+							e);
+					notification = new PeriodicNotification((Document) result.getNode(), subscriptionID);
 				}
 			} else {
 				notification = new PeriodicNotification((Document) result.getNode(), subscriptionID);
@@ -334,7 +340,10 @@ public class NotificationEngine {
 						notification = new OnChangeNotification((Document) result.getNode(), subscriptionID);
 					}
 				} catch (DocumentedException e) {
-					LOG.error("Applying subtree filter to noitifcation content failed: {}", e);
+					LOG.warn(
+							"Applying subtree filter to noitifcation content failed. Proceeding with unfiltered content...",
+							e);
+					notification = new OnChangeNotification((Document) result.getNode(), subscriptionID);
 				}
 			} else {
 				notification = new OnChangeNotification((Document) result.getNode(), subscriptionID);

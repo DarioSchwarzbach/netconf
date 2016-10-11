@@ -72,7 +72,7 @@ public class SubtreeFilter {
 	public static Optional<Document> applySubtreeNotificationFilter(XmlElement filter, Document notification)
 			throws DocumentedException {
 
-		//removeEventTimeNode(notification);
+		// removeEventTimeNode(notification);
 
 		if (isSupported(filter)) {
 			return Optional.fromNullable(filteredNotification(filter, notification));
@@ -105,20 +105,15 @@ public class SubtreeFilter {
 			throws DocumentedException {
 		Document result = XmlUtil.newDocument();
 		XmlElement dataSrc = XmlElement.fromDomDocument(originalNotification);
-		LOG.warn("TEST 100: {}", XmlUtil.toString(dataSrc.getDomElement()));
 		Element dataDst = (Element) result.importNode(dataSrc.getDomElement(), false);
-		LOG.warn("TEST 300: {}", XmlUtil.toString(dataDst));
 		for (XmlElement filterChild : filter.getChildElements()) {
-			LOG.warn("TEST 200: {}", XmlUtil.toString(filterChild.getDomElement()));
-			addSubtree2(filterChild, dataSrc.getOnlyChildElement(filterChild.getName(), filterChild.getNamespace()), XmlElement.fromDomElement(dataDst));
+			addSubtree2(filterChild, dataSrc.getOnlyChildElement(filterChild.getName(), filterChild.getNamespace()),
+					XmlElement.fromDomElement(dataDst));
 		}
 		if (dataDst.getFirstChild() != null) {
-			LOG.warn("TEST IFIFIF");
 			result.appendChild(dataDst.getFirstChild());
-			LOG.warn("TEST IFIFIF2: {}", XmlUtil.toString(result));
 			return result;
 		} else {
-			LOG.warn("TEST ELSE");
 			return null;
 		}
 	}
@@ -149,18 +144,13 @@ public class SubtreeFilter {
 	private static MatchingResult addSubtree2(XmlElement filter, XmlElement src, XmlElement dstParent)
 			throws DocumentedException {
 		Document document = dstParent.getDomElement().getOwnerDocument();
-		LOG.warn("TEST 1000 {}", XmlUtil.toString(document));
 		MatchingResult matches = matches(src, filter);
-		LOG.warn("TEST 1002 {}", matches);
 		if (matches != MatchingResult.NO_MATCH && matches != MatchingResult.CONTENT_MISMATCH) {
 			// copy srcChild to dst
 			boolean filterHasChildren = filter.getChildElements().isEmpty() == false;
-			LOG.warn("TEST 1003 {}", filterHasChildren);
 			// copy to depth if this is leaf of filter tree
 			Element copied = (Element) document.importNode(src.getDomElement(), filterHasChildren == false);
-			LOG.warn("TEST 1004 {}", XmlUtil.toString(copied));
 			boolean shouldAppend = filterHasChildren == false;
-			LOG.warn("TEST 1004 {}", shouldAppend);
 			if (filterHasChildren) { // this implies TAG_MATCH
 				// do the same recursively
 				int numberOfTextMatchingChildren = 0;
@@ -187,10 +177,8 @@ public class SubtreeFilter {
 			}
 			if (shouldAppend) {
 				dstParent.getDomElement().appendChild(copied);
-				LOG.warn("TEST 1005 {}", XmlUtil.toString(dstParent.getDomElement()));
 			}
 		}
-		LOG.warn("TEST 1006 {}", matches);
 		return matches;
 	}
 
@@ -201,7 +189,6 @@ public class SubtreeFilter {
 	private static MatchingResult matches(XmlElement src, XmlElement filter) throws DocumentedException {
 		boolean tagMatch = src.getName().equals(filter.getName())
 				&& src.getNamespaceOptionally().equals(filter.getNamespaceOptionally());
-		LOG.warn("TESTSTT {}", tagMatch);
 		MatchingResult result = null;
 		if (tagMatch) {
 			// match text content
@@ -215,19 +202,15 @@ public class SubtreeFilter {
 			}
 			// match attributes, combination of content and tag is not supported
 			if (result == null) {
-				LOG.warn("TESTSTT2 {}");
 				for (Attr attr : filter.getAttributes().values()) {
 					// ignore namespace declarations
 					if (XmlUtil.XMLNS_URI.equals(attr.getNamespaceURI()) == false) {
-						LOG.warn("TESTSTT3 {}");
 						// find attr with matching localName(), namespaceURI(),
 						// == value() in src
 						String found = src.getAttribute(attr.getLocalName(), attr.getNamespaceURI());
 						if (attr.getValue().equals(found) && result != MatchingResult.NO_MATCH) {
-							LOG.warn("TESTSTT4 {}");
 							result = MatchingResult.TAG_MATCH;
 						} else {
-							LOG.warn("TESTSTT5 {}");
 							result = MatchingResult.NO_MATCH;
 						}
 					}
