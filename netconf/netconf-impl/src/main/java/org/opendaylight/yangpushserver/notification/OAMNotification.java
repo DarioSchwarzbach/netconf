@@ -128,7 +128,7 @@ public final class OAMNotification extends NetconfMessage {
 	 */
 	private OAMNotification(final Document base, final String subscriptionID, OAMStatus status,
 			String reasonForSuspensionOrTermination, final Date eventTime) {
-		super(wrapNotification(base, subscriptionID, eventTime, status, reasonForSuspensionOrTermination));
+		super(composeNotification(base, subscriptionID, eventTime, status, reasonForSuspensionOrTermination));
 		this.subscriptionID = subscriptionID;
 		this.eventTime = eventTime;
 	}
@@ -148,36 +148,39 @@ public final class OAMNotification extends NetconfMessage {
 	}
 
 	/**
-	 * Wraps the previously to a XML {@link Document} transformed data into the
-	 * related netconf notification.
+	 * Composes an OAM notification out of an empty {@link Document} depending
+	 * on the given {@link OAMStatus}.
 	 * 
-	 * @param notificationContent
-	 *            Previously transformed data
+	 * @param base
+	 *            Empty document used as root to compose the notification
 	 * @param subscriptionID
-	 *            Underlying subscription ID
+	 *            Related ID the notification is send for
 	 * @param eventTime
-	 *            Time when this notification is send
-	 * @return
+	 *            Time when the notification is composed
+	 * @param status
+	 *            Determines what notification will be send
+	 * @param reasonForSuspensionOrTermination
+	 *            Reason String for suspension or termination of the related
+	 *            subscription
+	 * @return Composed notification following draft-ietf-netconf-rfc5277bis-00
 	 */
-
-	private static Document wrapNotification(final Document notificationContent, final String subscriptionID,
-			final Date eventTime, final OAMStatus status, final String reasonForSuspensionOrTermination) {
-		Preconditions.checkNotNull(notificationContent);
+	private static Document composeNotification(final Document base, final String subscriptionID, final Date eventTime,
+			final OAMStatus status, final String reasonForSuspensionOrTermination) {
+		Preconditions.checkNotNull(base);
 		Preconditions.checkNotNull(eventTime);
 
 		LOG.info("Start composing '{}' notification of subscription with ID {}...", status, subscriptionID);
 
-		final Element entireNotification = notificationContent
-				.createElementNS(PeriodicNotification.NOTIFICATION_NAMESPACE, PeriodicNotification.NOTIFICATION);
+		final Element entireNotification = base.createElementNS(PeriodicNotification.NOTIFICATION_NAMESPACE,
+				PeriodicNotification.NOTIFICATION);
 
-		final Element eventTimeElement = notificationContent.createElement(PeriodicNotification.EVENT_TIME);
+		final Element eventTimeElement = base.createElement(PeriodicNotification.EVENT_TIME);
 		eventTimeElement
 				.setTextContent(getSerializedEventTime(eventTime, PeriodicNotification.RFC3339_DATE_FORMAT_BLUEPRINT));
 		entireNotification.appendChild(eventTimeElement);
 
-		final Element notifiationType = notificationContent.createElementNS(statusToNamespace.get(status),
-				statusToName.get(status));
-		final Element subID = notificationContent.createElement(PeriodicNotification.SUB_ID);
+		final Element notifiationType = base.createElementNS(statusToNamespace.get(status), statusToName.get(status));
+		final Element subID = base.createElement(PeriodicNotification.SUB_ID);
 		subID.setTextContent(subscriptionID);
 		notifiationType.appendChild(subID);
 
@@ -190,111 +193,74 @@ public final class OAMNotification extends NetconfMessage {
 				return null;
 			}
 			if (underlyingSubscription.getEncoding() != null) {
-				final Element encoding = notificationContent.createElement(Encoding.QNAME.getLocalName());
+				final Element encoding = base.createElement(Encoding.QNAME.getLocalName());
 				encoding.setTextContent(underlyingSubscription.getEncoding());
 				notifiationType.appendChild(encoding);
 			}
 			if (underlyingSubscription.getStream() != null) {
-				final Element stream = notificationContent.createElement("stream");
+				final Element stream = base.createElement("stream");
 				stream.setTextContent(underlyingSubscription.getStream());
 				notifiationType.appendChild(stream);
 			}
 			if (underlyingSubscription.getStartTime() != null) {
-				final Element startTime = notificationContent.createElement("startTime");
+				final Element startTime = base.createElement("startTime");
 				startTime.setTextContent(underlyingSubscription.getStartTime());
 				notifiationType.appendChild(startTime);
 			}
 			if (underlyingSubscription.getStopTime() != null) {
-				final Element stopTime = notificationContent.createElement("stopTime");
+				final Element stopTime = base.createElement("stopTime");
 				stopTime.setTextContent(underlyingSubscription.getStopTime());
 				notifiationType.appendChild(stopTime);
 			}
-			// TODO Add other filter-types then subtree only and remove hard
-			// coded creation of subtree filter
 			if (underlyingSubscription.getFilter() != null) {
-				// final Element byReference =
-				// notificationContent.createElement(PeriodicNotification.SUB_ID);
-				// final Element filterRef =
-				// notificationContent.createElement(PeriodicNotification.SUB_ID);
-				//
-				// final Element rfc5277 =
-				// notificationContent.createElement(PeriodicNotification.SUB_ID);
-				//
-				final Element updateFilter = notificationContent.createElement("update-filter");
-				updateFilter.setAttribute("xmlns", "urn:ietf:params:xml:ns:netconf:notification:1.1");
-				updateFilter.setAttribute("type", "subtree");
-				updateFilter.setTextContent(XmlUtil.toString((Element) underlyingSubscription.getFilter().getNode()));
-				// final Element xpath =
-				// notificationContent.createElement(PeriodicNotification.SUB_ID);
+				notifiationType.appendChild(base.importNode(underlyingSubscription.getFilter().getNode(), true));
 			}
-			// choice filter-type {
-			// case by-reference {
-			// leaf filter-ref {
-			// type filter-ref;
-			// }
-			// }
-			// case rfc5277 {
-			// anyxml filter;
-			// }
-			// case update-filter {
-			// choice update-filter {
-			// case subtree {
-			// anyxml subtree-filter;
-			// }
-			// case xpath {
-			// leaf xpath-filter {
-			// type xpath1.0;
-			// }
-			// }
-			// }
-			// }
-			// }
 			if (status == OAMStatus.subscription_started || status == OAMStatus.subscription_modified) {
 				if (underlyingSubscription.getDscp() != null) {
-					final Element dscp = notificationContent.createElement("dscp");
+					final Element dscp = base.createElement("dscp");
 					dscp.setTextContent(underlyingSubscription.getDscp());
 					notifiationType.appendChild(dscp);
 				}
 				if (underlyingSubscription.getSubscriptionPriority() != null) {
-					final Element subscriptionPriority = notificationContent.createElement("subscription-priority");
+					final Element subscriptionPriority = base.createElement("subscription-priority");
 					subscriptionPriority.setTextContent(underlyingSubscription.getSubscriptionPriority());
 					notifiationType.appendChild(subscriptionPriority);
 				}
 				if (underlyingSubscription.getSubscriptionDependency() != null) {
-					final Element subscriptionDependency = notificationContent.createElement("subscription-dependency");
+					final Element subscriptionDependency = base.createElement("subscription-dependency");
 					subscriptionDependency.setTextContent(underlyingSubscription.getSubscriptionDependency());
 					notifiationType.appendChild(subscriptionDependency);
 				}
 				if (underlyingSubscription.getSubscriptionStartTime() != null) {
-					final Element subscriptionStartTime = notificationContent.createElement("subscription-start-time");
+					final Element subscriptionStartTime = base.createElement("subscription-start-time");
 					subscriptionStartTime.setTextContent(underlyingSubscription.getSubscriptionStartTime());
 					notifiationType.appendChild(subscriptionStartTime);
 				}
 				if (underlyingSubscription.getSubscriptionStopTime() != null) {
-					final Element subscriptionStopTime = notificationContent.createElement("subscription-stop-time");
+					final Element subscriptionStopTime = base.createElement("subscription-stop-time");
 					subscriptionStopTime.setTextContent(underlyingSubscription.getSubscriptionStopTime());
 					notifiationType.appendChild(subscriptionStopTime);
 				}
 				if (underlyingSubscription.getPeriod() != null) {
-					final Element periodic = notificationContent.createElement("periodic");
-					final Element period = notificationContent.createElement("period");
+					final Element periodic = base.createElement("periodic");
+					final Element period = base.createElement("period");
 					period.setTextContent(Long.toString(underlyingSubscription.getPeriod()));
 					periodic.appendChild(period);
 					notifiationType.appendChild(periodic);
 				}
 				if (underlyingSubscription.getDampeningPeriod() != null) {
-					final Element onChange = notificationContent.createElement("on-change");
+					final Element onChange = base.createElement("on-change");
 					if (underlyingSubscription.getNoSynchOnStart() != null) {
-						final Element noSynchOnStart = notificationContent.createElement("no-synch-on-start");
+						final Element noSynchOnStart = base.createElement("no-synch-on-start");
 						noSynchOnStart.setTextContent(underlyingSubscription.getNoSynchOnStart().toString());
 						onChange.appendChild(noSynchOnStart);
 					}
 					if (underlyingSubscription.getExcludedChange() != null) {
-						final Element exludedChange = notificationContent.createElement("excluded-change");
+						final Element exludedChange = base.createElement("excluded-change");
 						exludedChange.setTextContent(underlyingSubscription.getExcludedChange());
 						onChange.appendChild(exludedChange);
 					}
-					final Element dampeningPeriod = notificationContent.createElement("dampening-period");
+					final Element dampeningPeriod = base.createElement("dampening-period");
 					dampeningPeriod.setTextContent(Long.toString(underlyingSubscription.getDampeningPeriod()));
 					onChange.appendChild(dampeningPeriod);
 					notifiationType.appendChild(onChange);
@@ -302,7 +268,7 @@ public final class OAMNotification extends NetconfMessage {
 			}
 		}
 		if (status == OAMStatus.subscription_suspended || status == OAMStatus.subscription_terminated) {
-			final Element reason = notificationContent.createElement("reason");
+			final Element reason = base.createElement("reason");
 			if (reasonForSuspensionOrTermination != null) {
 				reason.setTextContent(reasonForSuspensionOrTermination);
 			}
@@ -310,11 +276,11 @@ public final class OAMNotification extends NetconfMessage {
 		}
 		entireNotification.appendChild(notifiationType);
 
-		notificationContent.appendChild(entireNotification);
+		base.appendChild(entireNotification);
 		LOG.info("Content for {} notification for subscription {} successfully composed: {}", status, subscriptionID,
-				XmlUtil.toString(notificationContent));
+				XmlUtil.toString(base));
 
-		return notificationContent;
+		return base;
 	}
 
 	private static String getSerializedEventTime(final Date eventTime, String pattern) {
