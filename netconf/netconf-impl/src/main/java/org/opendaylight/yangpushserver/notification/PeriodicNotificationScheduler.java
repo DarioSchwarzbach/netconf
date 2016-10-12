@@ -148,6 +148,18 @@ public class PeriodicNotificationScheduler implements AutoCloseable {
 		}
 	}
 
+	/**
+	 * Used to ensure that given time format Strings that are supposed to follow
+	 * YANG DateAndTime format are really in the correct format (Sometimes
+	 * attached zeros might be cut off). Furthermore transforms microsecond
+	 * precision of YANG DateAndTime to millisecond precision of {@link Date}
+	 * for further processing.
+	 * 
+	 * @param yangDateAndTime
+	 *            Date format String that will be formated correctly
+	 * @return Date format String used to schedule
+	 *         {@link ScheduledExecutorService}
+	 */
 	public static String ensureYangDateAndTimeFormat(String yangDateAndTime) {
 		if (yangDateAndTime != null) {
 			String newTime = yangDateAndTime;

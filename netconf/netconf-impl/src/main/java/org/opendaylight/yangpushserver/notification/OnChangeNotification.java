@@ -130,10 +130,9 @@ public final class OnChangeNotification extends NetconfMessage {
 			res.appendChild(entireNotification);
 			LOG.info("Content for on change notification for subscription {} successfully wrapped: {}", subscriptionID,
 					XmlUtil.toString(res));
-
 			return res;
 		} else {
-
+			LOG.info("Encoding content to XML...");
 			final Element baseNotification = notificationContent.getDocumentElement();
 			final Element entireNotification = notificationContent
 					.createElementNS(PeriodicNotification.NOTIFICATION_NAMESPACE, PeriodicNotification.NOTIFICATION);

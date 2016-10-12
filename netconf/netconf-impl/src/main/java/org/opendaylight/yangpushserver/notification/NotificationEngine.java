@@ -147,6 +147,7 @@ public class NotificationEngine {
 
 			case "YANG-PUSH":
 				future = readTransaction.read(LogicalDatastoreType.OPERATIONAL, YangpushProvider.ROOT);
+				// Another notification for CONFIGURATION tree of data store
 				secondPeriodicNotification(subscriptionID);
 				break;
 			case "CONFIGURATION":
@@ -397,10 +398,6 @@ public class NotificationEngine {
 		}
 	}
 
-	public static void main(String[] args) {
-		System.out.println(new OAMNotification(XmlUtil.newDocument(), "3", OAMStatus.subscription_started, null));
-	}
-
 	/**
 	 * Called by {@link SubscriptionEngine} to register for notifications
 	 * related to a specific subscription. Used to set up a
@@ -461,11 +458,6 @@ public class NotificationEngine {
 		} else {
 			LOG.warn("Subscription ID '{}' not registered for periodic or on change notifications.", subscriptionID);
 		}
-	}
-
-	private void applyFilter() {
-		// TODO Applies the filters required for the specific subscription to
-		// the retrieved data.
 	}
 
 	/**
