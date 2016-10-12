@@ -238,6 +238,22 @@ public class RpcImpl implements DOMRpcImplementation {
 	/***********************************
 	 * Section for DELETE-SUBSCRIPTION *
 	 ***********************************/
+	/**
+	 * This method will handle the incomming delete subscription RPC. After
+	 * checking for null, the input nodes are going to be parsed. If the
+	 * subscription exists the following steps are going to be executed: 1.
+	 * Unregistering the notifications, so that no more notifications will be
+	 * sent. 2. The subscription itself will be deleted from the local map and
+	 * MD-SAL {@link SubscriptionEngine} 3. Creating the delete subscription
+	 * output. 4. The {@link YangpushProvider} will be notified about the
+	 * deleted subscription. 5. The created output will be sent.
+	 * 
+	 * @param input
+	 *            The input presented as NormalizedNode.
+	 *
+	 * @return The CheckedFuture either with the correct output in case of
+	 *         success or with an error-rpc
+	 */
 	private CheckedFuture<DOMRpcResult, DOMRpcException> deleteSubscriptionRpcHandler(NormalizedNode<?, ?> input) {
 		String error = "";
 		if (input.equals(null)) {
@@ -251,10 +267,12 @@ public class RpcImpl implements DOMRpcImplementation {
 		// parsing should have been 'ok'
 		LOG.info("Parsing complete");
 		LOG.info("Delete Subscription parsed Input: " + inputData.toString());
-		// TODO The client authorization should be checked here.
-		// Unregistering the notifications
-		notificationEngine.unregisterNotification(inputData.getSubscriptionId());
 		if (subscriptionEngine.checkIfSubscriptionExists(inputData.getSubscriptionId())) {
+			// TODO The client authorization should be checked here.
+
+			// Unregistering the notifications
+			notificationEngine.unregisterNotification(inputData.getSubscriptionId());
+			// Deleting the subscription from data store.
 			subscriptionEngine.updateMdSal(inputData, operations.delete);
 			ContainerNode output = createDeleteSubOutput(inputData);
 			provider.onDeletedSubscription(inputData.getSubscriptionId());
@@ -266,7 +284,12 @@ public class RpcImpl implements DOMRpcImplementation {
 		}
 	}
 
-	private ContainerNode createDeleteSubOutput(SubscriptionInfo inputData) {
+	/**
+	 * 
+	 * @param subscriptionInfo
+	 * @return
+	 */
+	private ContainerNode createDeleteSubOutput(SubscriptionInfo subscriptionInfo) {
 		final ContainerNode cn = Builders.containerBuilder().withNodeIdentifier(N_ESTABLISH_SUB_OUTPUT)
 				.withChild(ImmutableNodes.leafNode(N_SUB_RESULT_NAME, "ok")).build();
 		LOG.info("output node: " + cn);
@@ -723,9 +746,9 @@ public class RpcImpl implements DOMRpcImplementation {
 						transformer.transform(source, result);
 						String xmlString = result.getWriter().toString();
 						LOG.info("Original xmlString: " + xmlString);
-						xmlString = xmlString.split("\\<")[3];
+						// xmlString = xmlString.split("\\<")[3];
 						// LOG.info("xmlString2: "+xmlString);
-						xmlString = xmlString.split("\\s+")[0];
+						// xmlString = xmlString.split("\\s+")[0];
 						// LOG.info("xmlString3: "+xmlString);
 						// LOG.info("Test: " + test + "Test2: " + test2 +
 						// "Test3: " + test3);
