@@ -22,6 +22,7 @@ import org.opendaylight.controller.md.sal.dom.api.DOMDataBroker;
 import org.opendaylight.controller.md.sal.dom.api.DOMDataTreeChangeListener;
 import org.opendaylight.controller.md.sal.dom.api.DOMDataTreeChangeService;
 import org.opendaylight.controller.md.sal.dom.api.DOMDataTreeIdentifier;
+import org.opendaylight.yangpushserver.impl.YangpushProvider;
 import org.opendaylight.yangpushserver.notification.OAMNotification.OAMStatus;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine.operations;
@@ -173,7 +174,7 @@ public class OnChangeHandler implements AutoCloseable, DOMDataTreeChangeListener
 				LOG.warn("Subscription start time not in correct format for {} instead start time is {}",
 						PeriodicNotification.YANG_DATEANDTIME_FORMAT_BLUEPRINT, startTime);
 			}
-			trigger = scheduler.schedule(triggerAction, deltaTillStart, TimeUnit.MILLISECONDS);
+			trigger = scheduler.schedule(triggerAction, deltaTillStart + YangpushProvider.DELAY_TO_ENSURE_RPC_REPLY, TimeUnit.MILLISECONDS);
 			LOG.info("On change notification for subscription {} scheduled to start in {}ms with dampening period {}",
 					subscriptionID, deltaTillStart, dampeningPeriod);
 		}

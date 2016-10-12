@@ -17,6 +17,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.PushUpdate;
+import org.opendaylight.yangpushserver.impl.YangpushProvider;
 import org.opendaylight.yangpushserver.notification.OAMNotification.OAMStatus;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine;
 import org.opendaylight.yangpushserver.subscription.SubscriptionEngine.operations;
@@ -94,7 +95,7 @@ public class PeriodicNotificationScheduler implements AutoCloseable {
 						PeriodicNotification.YANG_DATEANDTIME_FORMAT_BLUEPRINT, startTime);
 			}
 		}
-		trigger = scheduler.scheduleAtFixedRate(triggerAction, deltaTillStart, period, TimeUnit.MILLISECONDS);
+		trigger = scheduler.scheduleAtFixedRate(triggerAction, deltaTillStart + YangpushProvider.DELAY_TO_ENSURE_RPC_REPLY, period, TimeUnit.MILLISECONDS);
 		LOG.info("Periodic notification for subscription {} scheduled to start in {}ms with period {}", subscriptionID,
 				deltaTillStart, period);
 

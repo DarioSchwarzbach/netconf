@@ -40,6 +40,11 @@ import org.slf4j.LoggerFactory;
 public class YangpushProvider implements Provider, AutoCloseable {
 	private static final Logger LOG = LoggerFactory.getLogger(YangpushProvider.class);
 	public static final YangInstanceIdentifier ROOT = YangInstanceIdentifier.builder().build();
+	/**
+	 * Used whenever notifications are scheduled to ensure that a rpc reply is
+	 * sent out before the notifications.
+	 */
+	public static final Long DELAY_TO_ENSURE_RPC_REPLY = 100l;
 
 	private DOMDataBroker globalDomDataBroker;
 	private RpcImpl ypServerRpcImpl;

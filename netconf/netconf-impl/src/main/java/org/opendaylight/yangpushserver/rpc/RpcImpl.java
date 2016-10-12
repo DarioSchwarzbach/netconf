@@ -15,6 +15,9 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
@@ -157,6 +160,7 @@ public class RpcImpl implements DOMRpcImplementation {
 	public static final DOMRpcIdentifier DELETE_SUBSCRIPTION_RPC = DOMRpcIdentifier
 			.create(SchemaPath.create(true, QName.create(DeleteSubscriptionInput.QNAME, "delete-subscription")));
 
+	private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 	private DOMRpcProviderService service;
 	private DOMDataBroker globalDomDataBroker;
 	private YangpushProvider provider;
@@ -893,24 +897,34 @@ public class RpcImpl implements DOMRpcImplementation {
 					createSubResponse("error no such subscription with ID:" + inputData.getSubscriptionId())));
 		}
 		// TODO The client authorization should be checked here.
-		// Saving the Subscription Information locally & on MDSAL datastore
-		this.subscriptionEngine.updateMdSal(inputData, operations.modify);
 		// Unregistering the notifications
 		notificationEngine.unregisterNotification(inputData.getSubscriptionId());
-		// The OAM message with 'subscription modify' will be sent
-		notificationEngine.oamNotification(inputData.getSubscriptionId(), OAMStatus.subscription_modified, null);
-		// The novel notifications will be registered
-		if (inputData.getDampeningPeriod() != null) {
-			notificationEngine.registerOnChangeNotification(inputData.getSubscriptionId());
-			LOG.info("Register on-Change-Notifications");
-		} else if (inputData.getPeriod() != null) {
-			notificationEngine.registerPeriodicNotification(inputData.getSubscriptionId());
-			LOG.info("Register periodic-Notifications");
-		} else {
+		// Saving the Subscription Information locally & on MDSAL datastore
+		this.subscriptionEngine.updateMdSal(inputData, operations.modify);
+
+		if (inputData.getPeriod() == null && inputData.getDampeningPeriod() == null) {
 			LOG.error("Wrong Subscription exists, neither on-Change nor periodic Subscription");
 			return Futures.immediateCheckedFuture((DOMRpcResult) new DefaultDOMRpcResult(
-					createSubResponse("error - wrong subscription, neither on-Change nor periodic subscription")));
+					createSubResponse("error - wrong subscription, neither on-Change nor periodic subscription")));	
 		}
+		// Workaround to ensure that the rpc-reply is send before OAM notifications 
+		// or yang-push notifications
+		scheduler.schedule(new Runnable() {
+			
+			@Override
+			public void run() {
+				// The OAM message with 'subscription modify' will be sent
+				notificationEngine.oamNotification(inputData.getSubscriptionId(), OAMStatus.subscription_modified, null);
+				// The novel notifications will be registered
+				if (inputData.getDampeningPeriod() != null) {
+					notificationEngine.registerOnChangeNotification(inputData.getSubscriptionId());
+					LOG.info("Register on-Change-Notifications");
+				} else if (inputData.getPeriod() != null) {
+					notificationEngine.registerPeriodicNotification(inputData.getSubscriptionId());
+					LOG.info("Register periodic-Notifications");
+				} 
+			}
+		}, YangpushProvider.DELAY_TO_ENSURE_RPC_REPLY, TimeUnit.MILLISECONDS);
 		output = createModifySubOutput(inputData.getSubscriptionId());
 		return Futures.immediateCheckedFuture((DOMRpcResult) new DefaultDOMRpcResult(output));
 	}
