@@ -14,28 +14,20 @@ import org.opendaylight.controller.md.sal.common.api.data.LogicalDatastoreType;
 import org.opendaylight.controller.md.sal.common.api.data.TransactionCommitFailedException;
 import org.opendaylight.controller.md.sal.dom.api.DOMDataBroker;
 import org.opendaylight.controller.md.sal.dom.api.DOMDataWriteTransaction;
-import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf._5277.netconf.rev160615.base.filter.FilterType;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.Encodings;
-import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.Filters;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.Subscriptions;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.subscriptions.Subscription;
-import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.subscriptions.subscription.FilterType1;
-import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.Subscription1;
-import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.push.rev160615.Subscription2;
-import org.opendaylight.yangpushserver.notification.PeriodicNotificationScheduler;
+import org.opendaylight.yangpushserver.rpc.RpcImpl;
 import org.opendaylight.yangtools.yang.common.QName;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.NodeIdentifier;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier.NodeIdentifierWithPredicates;
-import org.opendaylight.yangtools.yang.data.api.schema.AnyXmlNode;
 import org.opendaylight.yangtools.yang.data.api.schema.ChoiceNode;
 import org.opendaylight.yangtools.yang.data.api.schema.ContainerNode;
 import org.opendaylight.yangtools.yang.data.api.schema.MapEntryNode;
 import org.opendaylight.yangtools.yang.data.api.schema.MapNode;
 import org.opendaylight.yangtools.yang.data.impl.schema.Builders;
 import org.opendaylight.yangtools.yang.data.impl.schema.ImmutableNodes;
-import org.opendaylight.yangtools.yang.data.util.AnyXmlNodeDataWithSchema;
-import org.opendaylight.yangtools.yang.model.api.DataNodeContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -187,7 +179,7 @@ public class SubscriptionEngine {
 		NodeIdentifier subStopTime = NodeIdentifier.create(QName.create(YP_NS, YP_NS_DATE, "subscription-stop-time"));
 		NodeIdentifier dscp = NodeIdentifier.create(QName.create(YP_NS, YP_NS_DATE, "dscp"));
 
-		NodeIdentifier filtertype1 = new NodeIdentifier(FilterType1.QNAME);
+//		NodeIdentifier filtertype1 = new NodeIdentifier(FilterType1.QNAME);
 		NodeIdentifier subDependency = new NodeIdentifier(Y_SUB_DEPENDENCY_NAME);
 		NodeIdentifier subPriority = new NodeIdentifier(Y_SUB_PRIORITY_NAME);
 		NodeIdentifier updateTrigger = new NodeIdentifier(Y_UPDATE_TRIGGER_NAME);
@@ -253,8 +245,8 @@ public class SubscriptionEngine {
 			// Builders.choiceBuilder().withNodeIdentifier(updateFilter)
 			// .withChild(ImmutableNodes.leafNode(filter,
 			// subscriptionInfo.getFilter().toString())).build();
-			c3 = Builders.choiceBuilder().withNodeIdentifier(filtertype1)
-					.withChild(ImmutableNodes.leafNode(filter1, subscriptionInfo.getFilter().toString())).build();
+//			c3 = Builders.choiceBuilder().withNodeIdentifier(filtertype1)
+//					.withChild(ImmutableNodes.leafNode(filter1, subscriptionInfo.getFilter().toString())).build();
 			// DataNodeContainer c5 = (DataNodeContainer)
 			// Builders.leafBuilder().withNodeIdentifier(filter).build();
 			// AnyXmlNodeDataWithSchema c6 = (AnyXmlNodeDataWithSchema)
