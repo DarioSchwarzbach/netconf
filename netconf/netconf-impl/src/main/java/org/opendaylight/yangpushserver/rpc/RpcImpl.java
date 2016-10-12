@@ -71,6 +71,13 @@ import com.google.common.base.Optional;
 import com.google.common.util.concurrent.CheckedFuture;
 import com.google.common.util.concurrent.Futures;
 
+/**
+ * This singleton class will handle and process the incoming different supported
+ * RPC's - establish, delete and modify a subscription.
+ * 
+ * @author Philipp Konegen
+ *
+ */
 public class RpcImpl implements DOMRpcImplementation {
 
 	private static final Logger LOG = LoggerFactory.getLogger(RpcImpl.class);
@@ -126,7 +133,7 @@ public class RpcImpl implements DOMRpcImplementation {
 	public static final QName Y_PUSH_SUBTREE_FILTER = QName.create(YP_NS, YP_NS_DATE, "subtree-filter");
 
 	// QNames used to construct establish RPC input & output present in
-	// ietf-event-notifications.yang
+	// ietf-event-notifications
 
 	public static final NodeIdentifier N_SUBSCRIPTION_RESPONSE = NodeIdentifier.create(SubscriptionResponse.QNAME);
 	public static final NodeIdentifier N_ESTABLISH_SUB_OUTPUT = NodeIdentifier
@@ -138,21 +145,13 @@ public class RpcImpl implements DOMRpcImplementation {
 	public static final NodeIdentifier N_MODIFY_SUB_INPUT = NodeIdentifier.create(ModifySubscriptionInput.QNAME);
 
 	// QNames used to construct establish filter present in
-	// ietf-event-notifications.yang
+	// ietf-event-notifications
 	public static final NodeIdentifier N_UPDATE_FILTER = NodeIdentifier.create(UpdateFilter.QNAME);
 	public static final NodeIdentifier N_SUBTREE = NodeIdentifier.create(Subtree.QNAME);
 	// public static final QName N_FILTER_TYPE_NAME = QName.create(NOTIF_BIS,
 	// NOTIF_BIS_DATE, "filter-type");
 
-	// QNames used to construct input args defined in ietf-datatsore-push.yang
-	public static final QName I_PUSH_UPDATE_TRIGGER = QName.create(I_DS_PUSH_NS, I_DS_PUSH_NS_DATE, "update-trigger");
-	public static final QName I_PUSH_PERIOD_NAME = QName.create(I_DS_PUSH_NS, I_DS_PUSH_NS_DATE, "period");
-	public static final QName I_PUSH_TARGET_DATASTORE = QName.create(I_DS_PUSH_NS, I_DS_PUSH_NS_DATE,
-			"target-datastore");
-	public static final QName I_PUSH_SUBTREE_FILTERSPEC = QName.create(I_DS_PUSH_NS, I_DS_PUSH_NS_DATE, "filterspec");
-	public static final QName I_PUSH_SUBTREE_FILTER_TYPE = QName.create(I_DS_PUSH_NS, I_DS_PUSH_NS_DATE, "filter-type");
-	public static final QName I_PUSH_SUBTREE_FILTER = QName.create(I_DS_PUSH_NS, I_DS_PUSH_NS_DATE, "subtree-filter");
-
+	// QNames used to construct the RPC's
 	public static final DOMRpcIdentifier ESTABLISH_SUBSCRIPTION_RPC = DOMRpcIdentifier
 			.create(SchemaPath.create(true, QName.create(EstablishSubscriptionInput.QNAME, "establish-subscription")));
 	public static final DOMRpcIdentifier MODIFY_SUBSCRIPTION_RPC = DOMRpcIdentifier
@@ -180,16 +179,16 @@ public class RpcImpl implements DOMRpcImplementation {
 	}
 
 	/**
-	 * Registers RPC present in ietf-yang-push module.
+	 * Registers RPC present in ietf-yang-push module to DOMRpcProviderService.
 	 */
 	private void registerRPCs() {
-		// Register RPC to DOMRpcProviderService.
 		service.registerRpcImplementation(this, ESTABLISH_SUBSCRIPTION_RPC, MODIFY_SUBSCRIPTION_RPC,
 				DELETE_SUBSCRIPTION_RPC);
 	}
 
 	/**
-	 * This method is invoked on RPC invocation of the registered method.
+	 * This method is invoked on RPC invocation of the registered method. Here
+	 * will be distinguished between establish, modify and delete subscription.
 	 * 
 	 * @param rpc
 	 *            This is used to invoke the correct requested method, for the
@@ -197,6 +196,8 @@ public class RpcImpl implements DOMRpcImplementation {
 	 * @param input
 	 *            The whole input -represented in nodes- that is sent beneath
 	 *            the rpc
+	 * @return Either a {@link CheckedFuture} in case of succes, or a
+	 *         FailedCheckedFuture which will result in a RPC-Error.
 	 */
 	@Override
 	public CheckedFuture<DOMRpcResult, DOMRpcException> invokeRpc(DOMRpcIdentifier rpc, NormalizedNode<?, ?> input) {
@@ -216,6 +217,13 @@ public class RpcImpl implements DOMRpcImplementation {
 		return Futures.immediateFailedCheckedFuture(createDOMRpcException("RPC invocation not supported!"));
 	}
 
+	/**
+	 * Creating a {@link DOMRpcException} with the given string. It will end up
+	 * in an RpcError with the string as exception message.
+	 * 
+	 * @param string
+	 * @return {@link DOMRpcException}
+	 */
 	private DOMRpcException createDOMRpcException(String string) {
 		// RpcError.ErrorType test = new RpcErrors();
 		// RpcError output =
@@ -254,9 +262,8 @@ public class RpcImpl implements DOMRpcImplementation {
 	 * 
 	 * @param input
 	 *            The input presented as NormalizedNode.
-	 *
-	 * @return The CheckedFuture either with the correct output in case of
-	 *         success or with an error-rpc
+	 * @return CheckedFuture either with the correct output in case of success
+	 *         or with an error-rpc.
 	 */
 	private CheckedFuture<DOMRpcResult, DOMRpcException> deleteSubscriptionRpcHandler(NormalizedNode<?, ?> input) {
 		String error = "";
@@ -289,9 +296,13 @@ public class RpcImpl implements DOMRpcImplementation {
 	}
 
 	/**
+	 * This method will create the delete subscription output. At the moment
+	 * only the case for success is supported.
 	 * 
 	 * @param subscriptionInfo
-	 * @return
+	 *            All of the parsed information about a subscription.
+	 * @return A ContainerNode which represents the output and can be delivered
+	 *         via a new {@link DefaultDOMRpcResult}
 	 */
 	private ContainerNode createDeleteSubOutput(SubscriptionInfo subscriptionInfo) {
 		final ContainerNode cn = Builders.containerBuilder().withNodeIdentifier(N_ESTABLISH_SUB_OUTPUT)
@@ -305,6 +316,7 @@ public class RpcImpl implements DOMRpcImplementation {
 	 * input should container node_name and subscriptionId from the user
 	 *
 	 * @param input
+	 *            The input presented as NormalizedNode.
 	 * @param error
 	 * @return
 	 */
@@ -376,8 +388,15 @@ public class RpcImpl implements DOMRpcImplementation {
 	/**************************************
 	 * Section for ESTABLISH-SUBSCRIPTION *
 	 **************************************/
+	/**
+	 * This method will handle the incomming establish subscription RPC. After
+	 * checking for null, the input nodes are going to be parsed.
+	 * 
+	 * @param input
+	 *            The input presented as NormalizedNode.
+	 * @return
+	 */
 	private CheckedFuture<DOMRpcResult, DOMRpcException> establishSubscriptionRpcHandler(NormalizedNode<?, ?> input) {
-		String error = "";
 		String sid = "";
 
 		if (input == null) {
@@ -390,10 +409,9 @@ public class RpcImpl implements DOMRpcImplementation {
 			return Futures.immediateCheckedFuture(
 					(DOMRpcResult) new DefaultDOMRpcResult(createSubResponse("error - input missing or null")));
 		}
-
 		LOG.info("Going to parse RPC input");
 		// Parse input arg
-		SubscriptionInfo inputData = parseEstablishSubExternalRpcInput(input, error);
+		SubscriptionInfo inputData = parseEstablishSubExternalRpcInput(input);
 		if (inputData == null) {
 			LOG.error("Parsing failed");
 			return Futures.immediateCheckedFuture(
@@ -448,7 +466,6 @@ public class RpcImpl implements DOMRpcImplementation {
 		ChoiceNode c1 = Builders.choiceBuilder().withNodeIdentifier(result)
 				.withChild(ImmutableNodes.leafNode(subid, sidValue)).build();
 		ChoiceNode c2 = null;
-
 		// Whether its periodic or on-Change the node must be built differently
 		if (!(subscriptionInfo.getPeriod() == null)) {
 			LOG.info("Period" + subscriptionInfo.getPeriod().toString());
@@ -480,16 +497,23 @@ public class RpcImpl implements DOMRpcImplementation {
 		return null;
 	}
 
-	// Parsing the whole RPC, part by part
-	private SubscriptionInfo parseEstablishSubExternalRpcInput(NormalizedNode<?, ?> input, String error) {
+	/**
+	 * Parsing the whole establish subscription RPC, part by part, and stores it
+	 * in a {@link SubscriptionInfo}. Also the default values for each parameter
+	 * will be set, if not present in input.
+	 * 
+	 * @param input
+	 *            The input presented as NormalizedNode.
+	 * @return
+	 */
+	private SubscriptionInfo parseEstablishSubExternalRpcInput(NormalizedNode<?, ?> input) {
 		SubscriptionInfo esri = new SubscriptionInfo();
 		ContainerNode conNode = null;
-		error = "";
+		String error = "";
 		// Checks if input is missing/null
 		if (input == null) {
 			LOG.error(Errors.printError(errors.input_error));
-			esri = null;
-			return esri;
+			return null;
 		}
 		if (input instanceof ContainerNode) {
 			try {
@@ -499,25 +523,26 @@ public class RpcImpl implements DOMRpcImplementation {
 				AugmentationNode an = getAugmentationNodeFromInput(input);
 				LOG.info("AugmentationNode: " + an);
 				LOG.info("Whole node: " + conNode);
-				// Whole example node
-
-				// ImmutableContainerNode{nodeIdentifier=(urn:ietf:params:xml:ns:yang:ietf-event-notifications?revision=2016-06-15)input,
-				// value=[ImmutableAugmentationNode{nodeIdentifier=AugmentationIdentifier{childNames=[(urn:ietf:params:xml:ns:yang:ietf-yang-push?revision=2016-06-15)subscription-dependency,
-				// (urn:ietf:params:xml:ns:yang:ietf-yang-push?revision=2016-06-15)subscription-priority,
-				// (urn:ietf:params:xml:ns:yang:ietf-yang-push?revision=2016-06-15)update-trigger,
-				// (urn:ietf:params:xml:ns:yang:ietf-yang-push?revision=2016-06-15)dscp,
-				// (urn:ietf:params:xml:ns:yang:ietf-yang-push?revision=2016-06-15)subscription-start-time,
-				// (urn:ietf:params:xml:ns:yang:ietf-yang-push?revision=2016-06-15)subscription-stop-time]},
-				// value=[ImmutableChoiceNode{nodeIdentifier=(urn:ietf:params:xml:ns:yang:ietf-yang-push?revision=2016-06-15)update-trigger,
-				// value=[ImmutableLeafNode{nodeIdentifier=(urn:ietf:params:xml:ns:yang:ietf-yang-push?revision=2016-06-15)period,
-				// value=500, attributes={}}]}]},
-				// ImmutableLeafNode{nodeIdentifier=(urn:ietf:params:xml:ns:yang:ietf-event-notifications?revision=2016-06-15)encoding,
-				// value=(urn:ietf:params:xml:ns:yang:ietf-event-notifications?revision=2016-06-15)encode-xml,
-				// attributes={}},
-				// ImmutableLeafNode{nodeIdentifier=(urn:ietf:params:xml:ns:yang:ietf-event-notifications?revision=2016-06-15)stream,
-				// value=(urn:ietf:params:xml:ns:yang:ietf-event-notifications?revision=2016-06-15)NETCONF,
-				// attributes={}}], attributes={}}
-
+				/**
+				 * Whole example node
+				 * 
+				 * ImmutableContainerNode{nodeIdentifier=(urn:ietf:params:xml:ns:yang:ietf-event-notifications?revision=2016-06-15)input,
+				 * value=[ImmutableAugmentationNode{nodeIdentifier=AugmentationIdentifier{childNames=[(urn:ietf:params:xml:ns:yang:ietf-yang-push?revision=2016-06-15)subscription-dependency,
+				 * (urn:ietf:params:xml:ns:yang:ietf-yang-push?revision=2016-06-15)subscription-priority,
+				 * (urn:ietf:params:xml:ns:yang:ietf-yang-push?revision=2016-06-15)update-trigger,
+				 * (urn:ietf:params:xml:ns:yang:ietf-yang-push?revision=2016-06-15)dscp,
+				 * (urn:ietf:params:xml:ns:yang:ietf-yang-push?revision=2016-06-15)subscription-start-time,
+				 * (urn:ietf:params:xml:ns:yang:ietf-yang-push?revision=2016-06-15)subscription-stop-time]},
+				 * value=[ImmutableChoiceNode{nodeIdentifier=(urn:ietf:params:xml:ns:yang:ietf-yang-push?revision=2016-06-15)update-trigger,
+				 * value=[ImmutableLeafNode{nodeIdentifier=(urn:ietf:params:xml:ns:yang:ietf-yang-push?revision=2016-06-15)period,
+				 * value=500, attributes={}}]}]},
+				 * ImmutableLeafNode{nodeIdentifier=(urn:ietf:params:xml:ns:yang:ietf-event-notifications?revision=2016-06-15)encoding,
+				 * value=(urn:ietf:params:xml:ns:yang:ietf-event-notifications?revision=2016-06-15)encode-xml,
+				 * attributes={}},
+				 * ImmutableLeafNode{nodeIdentifier=(urn:ietf:params:xml:ns:yang:ietf-event-notifications?revision=2016-06-15)stream,
+				 * value=(urn:ietf:params:xml:ns:yang:ietf-event-notifications?revision=2016-06-15)NETCONF,
+				 * attributes={}}], attributes={}}
+				 */
 				// I Parse encoding - NO AUGMENTATION
 				DataContainerChild<? extends PathArgument, ?> encodingNode = null;
 				childNames.add(N_ENCODING_NAME);
@@ -739,7 +764,6 @@ public class RpcImpl implements DOMRpcImplementation {
 						esri.setFilter(domSource);
 						// XmlElement dataSrc =
 						// XmlElement.fromDomElement(domSource);
-
 						Transformer transformer = TransformerFactory.newInstance().newTransformer();
 						transformer.setOutputProperty(OutputKeys.INDENT, "yes");
 						transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
@@ -750,19 +774,13 @@ public class RpcImpl implements DOMRpcImplementation {
 						transformer.transform(source, result);
 						String xmlString = result.getWriter().toString();
 						LOG.info("Original xmlString: " + xmlString);
-						// xmlString = xmlString.split("\\<")[3];
-						// LOG.info("xmlString2: "+xmlString);
-						// xmlString = xmlString.split("\\s+")[0];
-						// LOG.info("xmlString3: "+xmlString);
-						// LOG.info("Test: " + test + "Test2: " + test2 +
-						// "Test3: " + test3);
 					} else {
 						LOG.error("Only subtree filter supported at the moment.");
 					}
 				}
 				LOG.info("Parsing filter-type complete : " + esri.getFilter());
 				// Set the SubscriptionStreamStatus to inactive, as long as no
-				// Notification is sent to client
+				// notifications will be sent to client
 				esri.setSubscriptionStreamStatus(SubscriptionStreamStatus.inactive);
 				// TODO Check if Input is corrrect:
 				// if (correctEstablishOrModifyInput(esri)) {
@@ -778,6 +796,13 @@ public class RpcImpl implements DOMRpcImplementation {
 		return esri;
 	}
 
+	/**
+	 * Looks for the AugmentationNode inside the input.
+	 * 
+	 * @param input
+	 *            The input presented as NormalizedNode
+	 * @return AugmentationNode from the input
+	 */
 	private AugmentationNode getAugmentationNodeFromInput(NormalizedNode<?, ?> input) {
 		LOG.info("Looking for AugmentationNode");
 		ContainerNode conNode = (ContainerNode) input;
@@ -792,6 +817,13 @@ public class RpcImpl implements DOMRpcImplementation {
 		return null;
 	}
 
+	/**
+	 * Checks if the subscription-start-time is before the actual system time.
+	 * 
+	 * @param subStartTime
+	 *            Represented in String format.
+	 * @return Boolean
+	 */
 	private boolean subStartTimeIsBeforeSystemTime(String subStartTime) {
 		Long currentTime = new Date().getTime();
 		DateFormat format = new SimpleDateFormat(PeriodicNotification.YANG_DATEANDTIME_FORMAT_BLUEPRINT);
@@ -809,10 +841,16 @@ public class RpcImpl implements DOMRpcImplementation {
 	}
 
 	// TODO check the input
-	private Boolean correctEstablishOrModifyInput(SubscriptionInfo esri) {
+	/**
+	 * This method checks the parsed input for syntax and semantic issues.
+	 * 
+	 * @param subscriptionInfo
+	 * @return
+	 */
+	private Boolean correctEstablishOrModifyInput(SubscriptionInfo subscriptionInfo) {
 		Boolean result = false;
-		if (esri.getEncoding().equals("encode-xml")) {
-		} else if (esri.getEncoding().equals("encode-json")) {
+		if (subscriptionInfo.getEncoding().equals("encode-xml")) {
+		} else if (subscriptionInfo.getEncoding().equals("encode-json")) {
 		} else {
 			LOG.error("Wrong encoding");
 			return result;
@@ -839,7 +877,7 @@ public class RpcImpl implements DOMRpcImplementation {
 		// }
 		// }
 		// Compare if stream is either NETCONF, OPERATIONAL or CONFIGURATION
-		switch (esri.getStream()) {
+		switch (subscriptionInfo.getStream()) {
 
 		case "YANG-PUSH":
 			break;
@@ -861,7 +899,7 @@ public class RpcImpl implements DOMRpcImplementation {
 		// }
 		// }
 		// Compare qos paramters: dscp, sub-dependecy and sub-priority
-		if (Integer.valueOf(esri.getSubscriptionId()) <= Integer.valueOf("0")) {
+		if (Integer.valueOf(subscriptionInfo.getSubscriptionId()) <= Integer.valueOf("0")) {
 			return result;
 		}
 		// Input should be checked now
@@ -873,8 +911,15 @@ public class RpcImpl implements DOMRpcImplementation {
 	/***********************************
 	 * Section for MODIFY-SUBSCRIPTION *
 	 ***********************************/
+	/**
+	 * This method will handle the incomming modify subscription RPC. After
+	 * checking for null, the input nodes are going to be parsed.
+	 * 
+	 * @param input
+	 *            The input presented as NormalizedNode.
+	 * @return
+	 */
 	private CheckedFuture<DOMRpcResult, DOMRpcException> modifySubscriptionRpcHandler(NormalizedNode<?, ?> input) {
-		String error = "";
 		ContainerNode output = null;
 		if (input == null) {
 			LOG.error(Errors.printError(errors.input_error));
@@ -888,7 +933,7 @@ public class RpcImpl implements DOMRpcImplementation {
 		}
 		LOG.info("Going to parse RPC input");
 		// Parse input arg
-		SubscriptionInfo inputData = parseModifySubExternalRpcInput(input, error);
+		SubscriptionInfo inputData = parseModifySubExternalRpcInput(input);
 		// parsing should have been 'ok'
 		LOG.info("Parsing complete");
 		if (!subscriptionEngine.checkIfSubscriptionExists(inputData.getSubscriptionId())) {
@@ -930,13 +975,13 @@ public class RpcImpl implements DOMRpcImplementation {
 	}
 
 	/**
-	 * Creates a container node for CreateSubscription RPC output.
+	 * Creates a container node for establish subscription RPC output.
 	 *
-	 * @param sid
-	 * @return containerNode for Create Subscription Output
+	 * @param sub_id
+	 * @return containerNode for establish subscription output
 	 */
-	private ContainerNode createModifySubOutput(String sid) {
-		SubscriptionInfo subscriptionInfo = subscriptionEngine.getSubscription(sid);
+	private ContainerNode createModifySubOutput(String sub_id) {
+		SubscriptionInfo subscriptionInfo = subscriptionEngine.getSubscription(sub_id);
 
 		NodeIdentifier result = new NodeIdentifier(N_RESULT_NAME);
 		NodeIdentifier subid = new NodeIdentifier(N_SUB_ID_NAME);
@@ -947,7 +992,7 @@ public class RpcImpl implements DOMRpcImplementation {
 		// Not yet supported
 		NodeIdentifier exlcludedChange = new NodeIdentifier(Y_EXCLUDED_CHANGE_NAME);
 
-		Long sidValue = Long.valueOf(sid);
+		Long sidValue = Long.valueOf(sub_id);
 		Short subPriorityValue = Short.valueOf(subscriptionInfo.getSubscriptionPriority());
 		// Short dscpValue = Short.valueOf(subscriptionInfo.getDscp());
 		ChoiceNode c1 = Builders.choiceBuilder().withNodeIdentifier(result)
@@ -966,7 +1011,7 @@ public class RpcImpl implements DOMRpcImplementation {
 					.withChild(ImmutableNodes.leafNode(dampeningPeriod, subscriptionInfo.getDampeningPeriod())).build();
 		}
 		// Creating final output node if sid is valid
-		if (!sid.equals("-1")) {
+		if (!sub_id.equals("-1")) {
 			final ContainerNode cn = Builders.containerBuilder().withNodeIdentifier(N_MODIFY_SUB_OUTPUT)
 					.withChild(ImmutableNodes.leafNode(N_SUB_RESULT_NAME, "ok")).withChild(c2).withChild(c1)
 					// .withChild(ImmutableNodes.leafNode(Y_DSCP_NAME,
@@ -985,11 +1030,19 @@ public class RpcImpl implements DOMRpcImplementation {
 		return null;
 	}
 
-	// Parsing the whole RPC, part by part
-	private SubscriptionInfo parseModifySubExternalRpcInput(NormalizedNode<?, ?> input, String error) {
+	/**
+	 * Parsing the whole modify subscription RPC, part by part, and stores it in
+	 * a {@link SubscriptionInfo}. If values not present in input, they will be
+	 * set to the values of the subscription before the modification.
+	 * 
+	 * @param input
+	 *            The input presented as NormalizedNode.
+	 * @return
+	 */
+	private SubscriptionInfo parseModifySubExternalRpcInput(NormalizedNode<?, ?> input) {
 		SubscriptionInfo msri = new SubscriptionInfo();
 		ContainerNode conNode = null;
-		error = "";
+		String error = "";
 		// Checks if input is missing/null
 		if (input == null) {
 			LOG.error(Errors.printError(errors.input_error));
@@ -1264,7 +1317,6 @@ public class RpcImpl implements DOMRpcImplementation {
 						// "Test3: " + test3);
 					} else {
 						msri.setFilter(oldSubscriptionInfo.getFilter());
-						;
 					}
 				}
 				LOG.info("Parsing filter-type complete : " + msri.getFilter());
