@@ -152,19 +152,20 @@ public class OnChangeHandler implements AutoCloseable, DOMDataTreeChangeListener
 			}
 		}
 
-		final Runnable triggerAction = new Runnable() {
-			@Override
-			public void run() {
-				LOG.info("DOMDataTreeChangeListener for subscription {} registered and subscription set to active",
-						subscriptionID);
-				if (SubscriptionEngine.getInstance().getSubscription(subscriptionID)
-						.getSubscriptionStreamStatus() == SubscriptionStreamStatus.inactive) {
-					SubscriptionEngine.getInstance().getSubscription(subscriptionID)
-							.setSubscriptionStreamStatus(SubscriptionStreamStatus.active);
-				}
-				NotificationEngine.getInstance().oamNotification(subscriptionID, OAMStatus.subscription_started, null);
-				registerListeners();
+		final Runnable triggerAction = () -> {
+			// Registers DOMDataTreeChangeListeners for the underlying on
+			// change subscription and sets the subscription to active.
+			// Furthermore sends a subscription_started OAM notification to
+			// the subscriber.
+			LOG.info("DOMDataTreeChangeListener for subscription {} registered and subscription set to active",
+					subscriptionID);
+			if (SubscriptionEngine.getInstance().getSubscription(subscriptionID)
+					.getSubscriptionStreamStatus() == SubscriptionStreamStatus.inactive) {
+				SubscriptionEngine.getInstance().getSubscription(subscriptionID)
+						.setSubscriptionStreamStatus(SubscriptionStreamStatus.active);
 			}
+			NotificationEngine.getInstance().oamNotification(subscriptionID, OAMStatus.subscription_started, null);
+			registerListeners();
 		};
 		Long deltaTillStart = 0l;
 		if (startTime != null) {
@@ -174,7 +175,8 @@ public class OnChangeHandler implements AutoCloseable, DOMDataTreeChangeListener
 				LOG.warn("Subscription start time not in correct format for {} instead start time is {}",
 						PeriodicNotification.YANG_DATEANDTIME_FORMAT_BLUEPRINT, startTime);
 			}
-			trigger = scheduler.schedule(triggerAction, deltaTillStart + YangpushProvider.DELAY_TO_ENSURE_RPC_REPLY, TimeUnit.MILLISECONDS);
+			trigger = scheduler.schedule(triggerAction, deltaTillStart + YangpushProvider.DELAY_TO_ENSURE_RPC_REPLY,
+					TimeUnit.MILLISECONDS);
 			LOG.info("On change notification for subscription {} scheduled to start in {}ms with dampening period {}",
 					subscriptionID, deltaTillStart, dampeningPeriod);
 		}
@@ -188,19 +190,14 @@ public class OnChangeHandler implements AutoCloseable, DOMDataTreeChangeListener
 			}
 		}
 		if (deltaTillStop > 0) {
-			scheduler.schedule(new Runnable() {
-
-				@Override
-				public void run() {
-					LOG.info(
-							"On change notification for subscription {} reached its stop time and the subscription will be deleted",
-							subscriptionID);
-					NotificationEngine.getInstance().unregisterNotification(subscriptionID);
-					NotificationEngine.getInstance().oamNotification(subscriptionID, OAMStatus.notificationComplete,
-							null);
-					SubscriptionInfo subscription = SubscriptionEngine.getInstance().getSubscription(subscriptionID);
-					SubscriptionEngine.getInstance().updateMdSal(subscription, operations.delete);
-				}
+			scheduler.schedule(() -> {
+				LOG.info(
+						"On change notification for subscription {} reached its stop time and the subscription will be deleted",
+						subscriptionID);
+				NotificationEngine.getInstance().unregisterNotification(subscriptionID);
+				NotificationEngine.getInstance().oamNotification(subscriptionID, OAMStatus.notificationComplete, null);
+				SubscriptionInfo subscription = SubscriptionEngine.getInstance().getSubscription(subscriptionID);
+				SubscriptionEngine.getInstance().updateMdSal(subscription, operations.delete);
 			}, deltaTillStop, TimeUnit.MILLISECONDS);
 			LOG.info("On change notification for subscription {} scheduled with stop time {}", subscriptionID,
 					stopTime);
