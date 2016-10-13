@@ -9,3 +9,5 @@ do not install odl-netconf-all before odl-netconf-mdsal because it leads to an e
 server).
 You want to check 'log:tail' to see if YangpushProvider has successfully registered.
 Now you are set to establish periodic or on change yang-push subscriptions via NCClient or other netconf clients.
+
+Please see also https://github.com/MBlahetek/ncclient for a related NETCONF client to test this implementation.
