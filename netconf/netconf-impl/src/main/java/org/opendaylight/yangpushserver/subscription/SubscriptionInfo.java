@@ -10,16 +10,25 @@ package org.opendaylight.yangpushserver.subscription;
 import javax.xml.transform.dom.DOMSource;
 
 import org.opendaylight.yangpushserver.rpc.Errors;
-import org.opendaylight.yangpushserver.subscription.SubscriptionInfo.SubscriptionStreamStatus;
+import org.opendaylight.yangpushserver.rpc.RpcImpl;
 
+/**
+ * This is skeleton represents subscriptions with all the information gathered
+ * from parsing in {@link RpcImpl}.
+ * 
+ * @author Philipp Konegen
+ *
+ */
 public final class SubscriptionInfo {
-	// TODO Instead of just String types, ensure the formats fit!
+	/**
+	 * 
+	 * SubscriptionStreamStatus shows the current state of the subscription.
+	 *
+	 */
 	public enum SubscriptionStreamStatus {
-		active,
-		inactive,
-		suspend,
-		in_error,
+		active, inactive, suspend, in_error,
 	}
+
 	public String node_name, encoding, stream, startTime, stopTime, filterType, subscriptionStartTime,
 			subscriptionStopTime, dscp, subscriptionPriority, subscriptionDependency, updateTrigger, status,
 			subscriptionId;
@@ -31,7 +40,6 @@ public final class SubscriptionInfo {
 	private String excludedChange;
 	private static SubscriptionInfo instance = null;
 
-	// TODO Constructor should be private.
 	public SubscriptionInfo() {
 	}
 
@@ -42,7 +50,7 @@ public final class SubscriptionInfo {
 	public void setSubscriptionStreamStatus(SubscriptionStreamStatus subscriptionStreamStatus) {
 		this.subscriptionStreamStatus = subscriptionStreamStatus;
 	}
-	
+
 	public String getSubscriptionDependency() {
 		return subscriptionDependency;
 	}
@@ -74,7 +82,7 @@ public final class SubscriptionInfo {
 	public void setExcludedChange(String excludedChange) {
 		this.excludedChange = excludedChange;
 	}
-	
+
 	public String getDscp() {
 		return dscp;
 	}
@@ -115,10 +123,10 @@ public final class SubscriptionInfo {
 		this.updateTrigger = updateTrigger;
 	}
 
-//	public String getEncodingValue() {
-//		return encoding.split("\\)")[1];
-//	}
-	
+	// public String getEncodingValue() {
+	// return encoding.split("\\)")[1];
+	// }
+
 	public String getEncoding() {
 		return encoding;
 	}
@@ -215,10 +223,10 @@ public final class SubscriptionInfo {
 	// period.toString()+"\n" ;
 	// }
 
-//	public static SubscriptionInfo getInstance() {
-//		if (instance == null) {
-//			instance = new SubscriptionInfo();
-//		}
-//		return instance;
-//	}
+	// public static SubscriptionInfo getInstance() {
+	// if (instance == null) {
+	// instance = new SubscriptionInfo();
+	// }
+	// return instance;
+	// }
 }

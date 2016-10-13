@@ -31,6 +31,12 @@ import org.opendaylight.yangtools.yang.data.impl.schema.ImmutableNodes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * This singleton class will manage and process all subscriptions.
+ * 
+ * @author Philipp Konegen
+ *
+ */
 public class SubscriptionEngine {
 
 	private static final Logger LOG = LoggerFactory.getLogger(SubscriptionEngine.class);
@@ -179,7 +185,7 @@ public class SubscriptionEngine {
 		NodeIdentifier subStopTime = NodeIdentifier.create(QName.create(YP_NS, YP_NS_DATE, "subscription-stop-time"));
 		NodeIdentifier dscp = NodeIdentifier.create(QName.create(YP_NS, YP_NS_DATE, "dscp"));
 
-//		NodeIdentifier filtertype1 = new NodeIdentifier(FilterType1.QNAME);
+		// NodeIdentifier filtertype1 = new NodeIdentifier(FilterType1.QNAME);
 		NodeIdentifier subDependency = new NodeIdentifier(Y_SUB_DEPENDENCY_NAME);
 		NodeIdentifier subPriority = new NodeIdentifier(Y_SUB_PRIORITY_NAME);
 		NodeIdentifier updateTrigger = new NodeIdentifier(Y_UPDATE_TRIGGER_NAME);
@@ -245,8 +251,9 @@ public class SubscriptionEngine {
 			// Builders.choiceBuilder().withNodeIdentifier(updateFilter)
 			// .withChild(ImmutableNodes.leafNode(filter,
 			// subscriptionInfo.getFilter().toString())).build();
-//			c3 = Builders.choiceBuilder().withNodeIdentifier(filtertype1)
-//					.withChild(ImmutableNodes.leafNode(filter1, subscriptionInfo.getFilter().toString())).build();
+			// c3 = Builders.choiceBuilder().withNodeIdentifier(filtertype1)
+			// .withChild(ImmutableNodes.leafNode(filter1,
+			// subscriptionInfo.getFilter().toString())).build();
 			// DataNodeContainer c5 = (DataNodeContainer)
 			// Builders.leafBuilder().withNodeIdentifier(filter).build();
 			// AnyXmlNodeDataWithSchema c6 = (AnyXmlNodeDataWithSchema)
