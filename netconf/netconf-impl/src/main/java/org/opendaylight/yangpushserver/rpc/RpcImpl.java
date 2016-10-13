@@ -253,12 +253,20 @@ public class RpcImpl implements DOMRpcImplementation {
 	/**
 	 * This method will handle the incomming delete subscription RPC. After
 	 * checking for null, the input nodes are going to be parsed. If the
-	 * subscription exists the following steps are going to be executed: 1.
-	 * Unregistering the notifications, so that no more notifications will be
-	 * sent. 2. The subscription itself will be deleted from the local map and
-	 * MD-SAL {@link SubscriptionEngine} 3. Creating the delete subscription
-	 * output. 4. The {@link YangpushProvider} will be notified about the
-	 * deleted subscription. 5. The created output will be sent.
+	 * subscription exists the following order will be executed:
+	 * <p>
+	 * 1. Unregistering the notifications, so that no more notifications will be
+	 * sent.
+	 * <p>
+	 * 2. The subscription itself will be deleted from the local map and inside
+	 * MD-SAL {@link SubscriptionEngine}
+	 * <p>
+	 * 3. Creating the delete subscription output.
+	 * <p>
+	 * 4. The {@link YangpushProvider} will be notified about the deleted
+	 * subscription.
+	 * <p>
+	 * 5. The created output will be sent.
 	 * 
 	 * @param input
 	 *            The input presented as NormalizedNode.
@@ -273,14 +281,11 @@ public class RpcImpl implements DOMRpcImplementation {
 					(DOMRpcResult) new DefaultDOMRpcResult(createSubResponse("error - input missing or null")));
 		}
 		LOG.info("Going to parse RPC input");
-		// Parse input arg
-		SubscriptionInfo inputData = parseDeleteSubExternalRpcInput(input, error);
-		// parsing should have been 'ok'
+		SubscriptionInfo inputData = parseDeleteSubExternalRpcInput(input);
 		LOG.info("Parsing complete");
 		LOG.info("Delete Subscription parsed Input: " + inputData.toString());
 		if (subscriptionEngine.checkIfSubscriptionExists(inputData.getSubscriptionId())) {
 			// TODO The client authorization should be checked here.
-
 			// Unregistering the notifications
 			notificationEngine.unregisterNotification(inputData.getSubscriptionId());
 			// Deleting the subscription from data store.
@@ -318,12 +323,12 @@ public class RpcImpl implements DOMRpcImplementation {
 	 * @param input
 	 *            The input presented as NormalizedNode.
 	 * @param error
-	 * @return
+	 * @return SubscriptionInfo
 	 */
-	private SubscriptionInfo parseDeleteSubExternalRpcInput(NormalizedNode<?, ?> input, String error) {
+	private SubscriptionInfo parseDeleteSubExternalRpcInput(NormalizedNode<?, ?> input) {
 		SubscriptionInfo dsri = new SubscriptionInfo();
 		ContainerNode conNode = null;
-		error = "";
+		String error = "";
 		if (input == null) {
 			error = Errors.printError(errors.input_error);
 			dsri = null;
@@ -390,7 +395,25 @@ public class RpcImpl implements DOMRpcImplementation {
 	 **************************************/
 	/**
 	 * This method will handle the incomming establish subscription RPC. After
-	 * checking for null, the input nodes are going to be parsed.
+	 * checking for null, the input nodes are going to be parsed. Then the
+	 * following order will be executed:
+	 * <p>
+	 * <p>
+	 * 1. Generating the unique subscription id inside
+	 * {@link SubscriptionEngine} sent.
+	 * <p>
+	 * 2. The subscription itself will be stored to the local map and MD-SAL
+	 * inside {@link SubscriptionEngine}
+	 * <p>
+	 * 3. Registering either periodic or on-change notifications
+	 * <p>
+	 * 4. Creating the establish subscription output.
+	 * <p>
+	 * 4. The {@link YangpushProvider} will be notified about the established
+	 * subscription.
+	 * <p>
+	 * 5. The created output will be sent.
+	 * <p>
 	 * 
 	 * @param input
 	 *            The input presented as NormalizedNode.
@@ -504,7 +527,7 @@ public class RpcImpl implements DOMRpcImplementation {
 	 * 
 	 * @param input
 	 *            The input presented as NormalizedNode.
-	 * @return
+	 * @return SubscriptionInfo
 	 */
 	private SubscriptionInfo parseEstablishSubExternalRpcInput(NormalizedNode<?, ?> input) {
 		SubscriptionInfo esri = new SubscriptionInfo();
@@ -745,8 +768,7 @@ public class RpcImpl implements DOMRpcImplementation {
 					esri.setSubscriptionDependency("0");
 				}
 				LOG.info("Parsing sub-dependency complete : " + esri.getSubscriptionDependency());
-				// TODO Check it
-				// XI Parse filter-type
+				// XI Parse filter-type (only subtree filter is supported)
 				NodeIdentifier filtertype = new NodeIdentifier(N_SUBTREE_FILTER_TYPE_NAME);
 				NodeIdentifier subtreeFilter = new NodeIdentifier(N_SUBTREE_FILTER_NAME);
 				if (conNode.getChild(filtertype).isPresent()) {
@@ -845,7 +867,7 @@ public class RpcImpl implements DOMRpcImplementation {
 	 * This method checks the parsed input for syntax and semantic issues.
 	 * 
 	 * @param subscriptionInfo
-	 * @return
+	 * @return true, if the input is correct and matches the server capabilites
 	 */
 	private Boolean correctEstablishOrModifyInput(SubscriptionInfo subscriptionInfo) {
 		Boolean result = false;
@@ -912,8 +934,29 @@ public class RpcImpl implements DOMRpcImplementation {
 	 * Section for MODIFY-SUBSCRIPTION *
 	 ***********************************/
 	/**
-	 * This method will handle the incomming modify subscription RPC. After
-	 * checking for null, the input nodes are going to be parsed.
+	 * This method will handle the incoming modify subscription RPC. After
+	 * checking for null, the input nodes are going to be parsed. Then the
+	 * following order will be executed:
+	 * <p>
+	 * <p>
+	 * 1. Check in {@link SubscriptionEngine} if the subscription exists, if not
+	 * sent error-rpc.
+	 * <p>
+	 * 2. Unregister the notifications in {@link NotificationEngine}.
+	 * <p>
+	 * 3. The modified subscription will be stored to the local map and MD-SAL
+	 * inside {@link SubscriptionEngine}
+	 * <p>
+	 * 4. If period and damepening period and period are null, an error-rpc will
+	 * be sent.
+	 * <p>
+	 * 5. Scheduling the OAM notifications and yang-push notifications, to
+	 * ensure the rpc-reply reaches the client before these notifications.
+	 * <p>
+	 * 6. Creating the modify subscription output.
+	 * <p>
+	 * 7. The created output will be sent.
+	 * <p>
 	 * 
 	 * @param input
 	 *            The input presented as NormalizedNode.
@@ -950,16 +993,18 @@ public class RpcImpl implements DOMRpcImplementation {
 		if (inputData.getPeriod() == null && inputData.getDampeningPeriod() == null) {
 			LOG.error("Wrong Subscription exists, neither on-Change nor periodic Subscription");
 			return Futures.immediateCheckedFuture((DOMRpcResult) new DefaultDOMRpcResult(
-					createSubResponse("error - wrong subscription, neither on-Change nor periodic subscription")));	
+					createSubResponse("error - wrong subscription, neither on-Change nor periodic subscription")));
 		}
-		// Workaround to ensure that the rpc-reply is send before OAM notifications 
+		// Workaround to ensure that the rpc-reply is send before OAM
+		// notifications
 		// or yang-push notifications
 		scheduler.schedule(new Runnable() {
-			
+
 			@Override
 			public void run() {
 				// The OAM message with 'subscription modify' will be sent
-				notificationEngine.oamNotification(inputData.getSubscriptionId(), OAMStatus.subscription_modified, null);
+				notificationEngine.oamNotification(inputData.getSubscriptionId(), OAMStatus.subscription_modified,
+						null);
 				// The novel notifications will be registered
 				if (inputData.getDampeningPeriod() != null) {
 					notificationEngine.registerOnChangeNotification(inputData.getSubscriptionId());
@@ -967,7 +1012,7 @@ public class RpcImpl implements DOMRpcImplementation {
 				} else if (inputData.getPeriod() != null) {
 					notificationEngine.registerPeriodicNotification(inputData.getSubscriptionId());
 					LOG.info("Register periodic-Notifications");
-				} 
+				}
 			}
 		}, YangpushProvider.DELAY_TO_ENSURE_RPC_REPLY, TimeUnit.MILLISECONDS);
 		output = createModifySubOutput(inputData.getSubscriptionId());
@@ -975,10 +1020,11 @@ public class RpcImpl implements DOMRpcImplementation {
 	}
 
 	/**
-	 * Creates a container node for establish subscription RPC output.
+	 * Creates a container node for modify subscription RPC output.
 	 *
 	 * @param sub_id
-	 * @return containerNode for establish subscription output
+	 *            individual Id of a subscription
+	 * @return containerNode for modify subscription output
 	 */
 	private ContainerNode createModifySubOutput(String sub_id) {
 		SubscriptionInfo subscriptionInfo = subscriptionEngine.getSubscription(sub_id);
@@ -1037,7 +1083,7 @@ public class RpcImpl implements DOMRpcImplementation {
 	 * 
 	 * @param input
 	 *            The input presented as NormalizedNode.
-	 * @return
+	 * @return SubscriptionInfo
 	 */
 	private SubscriptionInfo parseModifySubExternalRpcInput(NormalizedNode<?, ?> input) {
 		SubscriptionInfo msri = new SubscriptionInfo();
@@ -1110,11 +1156,6 @@ public class RpcImpl implements DOMRpcImplementation {
 				DataContainerChild<? extends PathArgument, ?> subStartTimeNode = null;
 				NodeIdentifier subStartTime = new NodeIdentifier(Y_SUB_START_TIME_NAME);
 				t = an.getChild(subStartTime);
-				// DateFuture was needed for a special version of ncclient.
-				Date date = new Date();
-				// Long timeFuture = date.getTime() + 5000;
-				// Date dateFuture = new Date(timeFuture);
-				// Remove timeFuture and dateFuture...
 				if (t.isPresent()) {
 					subStartTimeNode = (LeafNode<?>) t.get();
 					if (!(subStartTimeNode.getValue().equals(null))) {
@@ -1279,8 +1320,7 @@ public class RpcImpl implements DOMRpcImplementation {
 					msri.setSubscriptionDependency(oldSubscriptionInfo.getSubscriptionDependency());
 				}
 				LOG.info("Parsing sub-dependency complete : " + msri.getSubscriptionDependency());
-				// TODO Check it
-				// XI Parse filter-type
+				// XI Parse filter-type (only subtree filter is supported)
 				NodeIdentifier filtertype = new NodeIdentifier(N_SUBTREE_FILTER_TYPE_NAME);
 				NodeIdentifier subtreeFilter = new NodeIdentifier(N_SUBTREE_FILTER_NAME);
 				if (conNode.getChild(filtertype).isPresent()) {
@@ -1292,29 +1332,7 @@ public class RpcImpl implements DOMRpcImplementation {
 						org.w3c.dom.Document document = nodeFilter.getOwnerDocument();
 						document.renameNode(nodeFilter, NOTIFICATION_NS, "filter");
 						DOMSource domSource = anyXmlFilter.getValue();
-						org.w3c.dom.Node test = domSource.getNode();
-						String test2 = domSource.getSystemId();
-						String test3 = test.getNodeName();
 						msri.setFilter(domSource);
-						// XmlElement dataSrc =
-						// XmlElement.fromDomElement(domSource);
-
-						Transformer transformer = TransformerFactory.newInstance().newTransformer();
-						transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-						transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
-						// initialize StreamResult with File object to save to
-						// file
-						StreamResult result = new StreamResult(new StringWriter());
-						DOMSource source = domSource;
-						transformer.transform(source, result);
-						String xmlString = result.getWriter().toString();
-						LOG.info("Original xmlString: " + xmlString);
-						xmlString = xmlString.split("\\<")[3];
-						// LOG.info("xmlString2: "+xmlString);
-						xmlString = xmlString.split("\\s+")[0];
-						// LOG.info("xmlString3: "+xmlString);
-						// LOG.info("Test: " + test + "Test2: " + test2 +
-						// "Test3: " + test3);
 					} else {
 						msri.setFilter(oldSubscriptionInfo.getFilter());
 					}

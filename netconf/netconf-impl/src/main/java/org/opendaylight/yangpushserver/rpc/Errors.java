@@ -7,6 +7,16 @@
  */
 package org.opendaylight.yangpushserver.rpc;
 
+import org.opendaylight.yangpushserver.subscription.SubscriptionEngine;
+
+/**
+ * 
+ * Possible error strings that may be used in {@link RpcImpl} and/or 
+ * {@link SubscriptionEngine}.
+ * 
+ * @author Philipp Konegen
+ *
+ */
 public class Errors {
     private static final String errorString[] ={
             "Input missing or null",
