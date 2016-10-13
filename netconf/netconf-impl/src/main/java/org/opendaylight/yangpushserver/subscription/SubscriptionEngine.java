@@ -10,6 +10,7 @@ package org.opendaylight.yangpushserver.subscription;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.opendaylight.controller.config.util.xml.XmlUtil;
 import org.opendaylight.controller.md.sal.common.api.data.LogicalDatastoreType;
 import org.opendaylight.controller.md.sal.common.api.data.TransactionCommitFailedException;
 import org.opendaylight.controller.md.sal.dom.api.DOMDataBroker;
@@ -17,6 +18,7 @@ import org.opendaylight.controller.md.sal.dom.api.DOMDataWriteTransaction;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.Encodings;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.Subscriptions;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.subscriptions.Subscription;
+import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.event.notifications.rev160615.subscriptions.subscription.FilterType1;
 import org.opendaylight.yangpushserver.rpc.RpcImpl;
 import org.opendaylight.yangtools.yang.common.QName;
 import org.opendaylight.yangtools.yang.data.api.YangInstanceIdentifier;
@@ -30,6 +32,7 @@ import org.opendaylight.yangtools.yang.data.impl.schema.Builders;
 import org.opendaylight.yangtools.yang.data.impl.schema.ImmutableNodes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.w3c.dom.Element;
 
 /**
  * This singleton class will manage and process all subscriptions.
@@ -174,20 +177,20 @@ public class SubscriptionEngine {
 		// Storing files to MD-SAL
 		// TODO Check if storing the data is correct.
 		NodeIdentifier encoding = NodeIdentifier.create(QName.create(Encodings.QNAME, "encoding"));
-		// NodeIdentifier filterType1 =
-		// NodeIdentifier.create(QName.create(NOTIF_BIS, NOTIF_BIS_DATE,
-		// "filter-type-1"));
+		NodeIdentifier filterType1 = NodeIdentifier.create(QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "filter-type-1"));
 		NodeIdentifier filter1 = NodeIdentifier.create(QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "filter-1"));
 		NodeIdentifier stream = NodeIdentifier.create(QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "stream"));
 		NodeIdentifier startTime = NodeIdentifier.create(QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "startTime"));
 		NodeIdentifier stopTime = NodeIdentifier.create(QName.create(NOTIF_BIS, NOTIF_BIS_DATE, "stopTime"));
 		NodeIdentifier subStartTime = NodeIdentifier.create(QName.create(YP_NS, YP_NS_DATE, "subscription-start-time"));
 		NodeIdentifier subStopTime = NodeIdentifier.create(QName.create(YP_NS, YP_NS_DATE, "subscription-stop-time"));
-		NodeIdentifier dscp = NodeIdentifier.create(QName.create(YP_NS, YP_NS_DATE, "dscp"));
+		// NodeIdentifier dscp = NodeIdentifier.create(QName.create(YP_NS,
+		// YP_NS_DATE, "dscp"));
 
-		// NodeIdentifier filtertype1 = new NodeIdentifier(FilterType1.QNAME);
-		NodeIdentifier subDependency = new NodeIdentifier(Y_SUB_DEPENDENCY_NAME);
-		NodeIdentifier subPriority = new NodeIdentifier(Y_SUB_PRIORITY_NAME);
+		NodeIdentifier filtertype1 = new NodeIdentifier(FilterType1.QNAME);
+		// NodeIdentifier subDependency = new
+		// NodeIdentifier(Y_SUB_DEPENDENCY_NAME);
+		// NodeIdentifier subPriority = new NodeIdentifier(Y_SUB_PRIORITY_NAME);
 		NodeIdentifier updateTrigger = new NodeIdentifier(Y_UPDATE_TRIGGER_NAME);
 		NodeIdentifier period = new NodeIdentifier(Y_PERIOD_NAME);
 		NodeIdentifier dampeningPeriod = new NodeIdentifier(Y_DAMPENING_PERIOD_NAME);
@@ -205,8 +208,9 @@ public class SubscriptionEngine {
 			subscriptionInfo = this.getSubscription(subscriptionInfo.getSubscriptionId());
 		}
 		Long sidValue = Long.valueOf(subscriptionInfo.getSubscriptionId());
-		Short subPriorityValue = Short.valueOf(subscriptionInfo.getSubscriptionPriority());
-		Short dscpValue = Short.valueOf(subscriptionInfo.getDscp());
+		// Short subPriorityValue =
+		// Short.valueOf(subscriptionInfo.getSubscriptionPriority());
+		// Short dscpValue = Short.valueOf(subscriptionInfo.getDscp());
 		// ChoiceNode c1 = Builders.choiceBuilder().withNodeIdentifier(result)
 		// .withChild(ImmutableNodes.leafNode(subid, sidValue)).build();
 		ChoiceNode c2 = null;
@@ -214,9 +218,7 @@ public class SubscriptionEngine {
 		if (!(subscriptionInfo.getPeriod() == null)) {
 			LOG.info("Period" + subscriptionInfo.getPeriod().toString());
 			c2 = Builders.choiceBuilder().withNodeIdentifier(updateTrigger)
-					// .withChild(ImmutableNodes.leafNode(period,
-					// subscriptionInfo.getPeriod()))
-					.build();
+					.withChild(ImmutableNodes.leafNode(period, subscriptionInfo.getPeriod())).build();
 		} else {
 			LOG.info("DP" + subscriptionInfo.getDampeningPeriod().toString());
 			if (subscriptionInfo.getNoSynchOnStart()) {
@@ -251,9 +253,8 @@ public class SubscriptionEngine {
 			// Builders.choiceBuilder().withNodeIdentifier(updateFilter)
 			// .withChild(ImmutableNodes.leafNode(filter,
 			// subscriptionInfo.getFilter().toString())).build();
-			// c3 = Builders.choiceBuilder().withNodeIdentifier(filtertype1)
-			// .withChild(ImmutableNodes.leafNode(filter1,
-			// subscriptionInfo.getFilter().toString())).build();
+			c3 = Builders.choiceBuilder().withNodeIdentifier(filtertype1)
+					.withChild(ImmutableNodes.leafNode(filter1, XmlUtil.toString((Element) subscriptionInfo.getFilter().getNode()))).build();
 			// DataNodeContainer c5 = (DataNodeContainer)
 			// Builders.leafBuilder().withNodeIdentifier(filter).build();
 			// AnyXmlNodeDataWithSchema c6 = (AnyXmlNodeDataWithSchema)
@@ -268,14 +269,14 @@ public class SubscriptionEngine {
 					.withChild(ImmutableNodes.leafNode(stream, subscriptionInfo.getStream()))
 					.withChild(ImmutableNodes.leafNode(subStartTime, subscriptionInfo.getSubscriptionStartTime()))
 					.withChild(ImmutableNodes.leafNode(subStopTime, subscriptionInfo.getSubscriptionStopTime()))
-					.withChild(ImmutableNodes.leafNode(subPriority, subPriorityValue))
-					.withChild(ImmutableNodes.leafNode(subDependency, subscriptionInfo.getSubscriptionDependency()))
-					.withChild(ImmutableNodes.leafNode(dscp, dscpValue))
+					// .withChild(ImmutableNodes.leafNode(subPriority,
+					// subPriorityValue))
+					// .withChild(ImmutableNodes.leafNode(subDependency,
+					// subscriptionInfo.getSubscriptionDependency()))
+					// .withChild(ImmutableNodes.leafNode(dscp, dscpValue))
 					.withChild(ImmutableNodes.leafNode(startTime, subscriptionInfo.getStartTime()))
 					.withChild(ImmutableNodes.leafNode(stopTime, subscriptionInfo.getStopTime()))
-					.withChild(ImmutableNodes.leafNode(encoding, subscriptionInfo.getEncoding()))
-					// .withChild(c3)
-					.build();
+					.withChild(ImmutableNodes.leafNode(encoding, subscriptionInfo.getEncoding())).withChild(c3).build();
 		} else {
 			men = ImmutableNodes.mapEntryBuilder().withNodeIdentifier(p)
 					// Part where Siegert should add the 'call_home' parameter
@@ -285,9 +286,11 @@ public class SubscriptionEngine {
 					.withChild(c2).withChild(ImmutableNodes.leafNode(stream, subscriptionInfo.getStream()))
 					.withChild(ImmutableNodes.leafNode(subStartTime, subscriptionInfo.getSubscriptionStartTime()))
 					.withChild(ImmutableNodes.leafNode(subStopTime, subscriptionInfo.getSubscriptionStopTime()))
-					.withChild(ImmutableNodes.leafNode(subPriority, subPriorityValue))
-					.withChild(ImmutableNodes.leafNode(subDependency, subscriptionInfo.getSubscriptionDependency()))
-					.withChild(ImmutableNodes.leafNode(dscp, dscpValue))
+					// .withChild(ImmutableNodes.leafNode(subPriority,
+					// subPriorityValue))
+					// .withChild(ImmutableNodes.leafNode(subDependency,
+					// subscriptionInfo.getSubscriptionDependency()))
+					// .withChild(ImmutableNodes.leafNode(dscp, dscpValue))
 					.withChild(ImmutableNodes.leafNode(startTime, subscriptionInfo.getStartTime()))
 					.withChild(ImmutableNodes.leafNode(stopTime, subscriptionInfo.getStopTime()))
 					.withChild(ImmutableNodes.leafNode(encoding, subscriptionInfo.getEncoding())).build();
