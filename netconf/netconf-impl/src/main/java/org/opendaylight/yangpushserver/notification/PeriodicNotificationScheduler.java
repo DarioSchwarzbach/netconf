@@ -66,25 +66,21 @@ public class PeriodicNotificationScheduler implements AutoCloseable {
 		this.startTime = ensureYangDateAndTimeFormat(subStartTime);
 		this.stopTime = ensureYangDateAndTimeFormat(subStopTime);
 
-		final Runnable triggerAction = new Runnable() {
-			@Override
-			public void run() {
-				// Calls method periodicNotification in NotificationEngine
-				// to compose and send a periodic notification for the
-				// underlying subscription
-				if (SubscriptionEngine.getInstance().getSubscription(subscriptionID)
-						.getSubscriptionStreamStatus() == SubscriptionStreamStatus.inactive) {
-					SubscriptionEngine.getInstance().getSubscription(subscriptionID)
-							.setSubscriptionStreamStatus(SubscriptionStreamStatus.active);
-				}
-				if (isTriggeredForTheFirstTime) {
-					NotificationEngine.getInstance().oamNotification(subscriptionID, OAMStatus.subscription_started,
-							null);
-					isTriggeredForTheFirstTime = false;
-				}
-				LOG.info("Periodic notification for subscription {} is triggered", subscriptionID);
-				NotificationEngine.getInstance().periodicNotification(subscriptionID);
+		final Runnable triggerAction = () -> {
+			// Calls method periodicNotification in NotificationEngine
+			// to compose and send a periodic notification for the
+			// underlying subscription
+			if (SubscriptionEngine.getInstance().getSubscription(subscriptionID)
+					.getSubscriptionStreamStatus() == SubscriptionStreamStatus.inactive) {
+				SubscriptionEngine.getInstance().getSubscription(subscriptionID)
+						.setSubscriptionStreamStatus(SubscriptionStreamStatus.active);
 			}
+			if (isTriggeredForTheFirstTime) {
+				NotificationEngine.getInstance().oamNotification(subscriptionID, OAMStatus.subscription_started, null);
+				isTriggeredForTheFirstTime = false;
+			}
+			LOG.info("Periodic notification for subscription {} is triggered", subscriptionID);
+			NotificationEngine.getInstance().periodicNotification(subscriptionID);
 		};
 		Long deltaTillStart = 0l;
 		if (startTime != null) {
@@ -95,7 +91,8 @@ public class PeriodicNotificationScheduler implements AutoCloseable {
 						PeriodicNotification.YANG_DATEANDTIME_FORMAT_BLUEPRINT, startTime);
 			}
 		}
-		trigger = scheduler.scheduleAtFixedRate(triggerAction, deltaTillStart + YangpushProvider.DELAY_TO_ENSURE_RPC_REPLY, period, TimeUnit.MILLISECONDS);
+		trigger = scheduler.scheduleAtFixedRate(triggerAction,
+				deltaTillStart + YangpushProvider.DELAY_TO_ENSURE_RPC_REPLY, period, TimeUnit.MILLISECONDS);
 		LOG.info("Periodic notification for subscription {} scheduled to start in {}ms with period {}", subscriptionID,
 				deltaTillStart, period);
 
@@ -109,19 +106,14 @@ public class PeriodicNotificationScheduler implements AutoCloseable {
 			}
 		}
 		if (deltaTillStop > 0) {
-			scheduler.schedule(new Runnable() {
-
-				@Override
-				public void run() {
-					LOG.info(
-							"Periodic notification for subscription {} reached its stop time and the subscription will be deleted",
-							subscriptionID);
-					NotificationEngine.getInstance().unregisterNotification(subscriptionID);
-					NotificationEngine.getInstance().oamNotification(subscriptionID, OAMStatus.notificationComplete,
-							null);
-					SubscriptionInfo subscription = SubscriptionEngine.getInstance().getSubscription(subscriptionID);
-					SubscriptionEngine.getInstance().updateMdSal(subscription, operations.delete);
-				}
+			scheduler.schedule(() -> {
+				LOG.info(
+						"Periodic notification for subscription {} reached its stop time and the subscription will be deleted",
+						subscriptionID);
+				NotificationEngine.getInstance().unregisterNotification(subscriptionID);
+				NotificationEngine.getInstance().oamNotification(subscriptionID, OAMStatus.notificationComplete, null);
+				SubscriptionInfo subscription = SubscriptionEngine.getInstance().getSubscription(subscriptionID);
+				SubscriptionEngine.getInstance().updateMdSal(subscription, operations.delete);
 			}, deltaTillStop, TimeUnit.MILLISECONDS);
 			LOG.info("Periodic notification for subscription {} scheduled with stop time {}", subscriptionID, stopTime);
 		}

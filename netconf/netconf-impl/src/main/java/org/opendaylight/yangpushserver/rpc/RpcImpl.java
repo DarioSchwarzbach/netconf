@@ -954,10 +954,7 @@ public class RpcImpl implements DOMRpcImplementation {
 		}
 		// Workaround to ensure that the rpc-reply is send before OAM notifications 
 		// or yang-push notifications
-		scheduler.schedule(new Runnable() {
-			
-			@Override
-			public void run() {
+		scheduler.schedule(() -> {
 				// The OAM message with 'subscription modify' will be sent
 				notificationEngine.oamNotification(inputData.getSubscriptionId(), OAMStatus.subscription_modified, null);
 				// The novel notifications will be registered
@@ -967,8 +964,7 @@ public class RpcImpl implements DOMRpcImplementation {
 				} else if (inputData.getPeriod() != null) {
 					notificationEngine.registerPeriodicNotification(inputData.getSubscriptionId());
 					LOG.info("Register periodic-Notifications");
-				} 
-			}
+				} 	
 		}, YangpushProvider.DELAY_TO_ENSURE_RPC_REPLY, TimeUnit.MILLISECONDS);
 		output = createModifySubOutput(inputData.getSubscriptionId());
 		return Futures.immediateCheckedFuture((DOMRpcResult) new DefaultDOMRpcResult(output));

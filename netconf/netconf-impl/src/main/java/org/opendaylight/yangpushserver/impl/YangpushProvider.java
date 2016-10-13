@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * 
- * This class is a Binding Independent provider and provide the implementation
+ * This class is a Binding Independent provider and provides the implementation
  * of yangpush producer application used for subscriptions to MD-SAL data store
  * and YANG push notifications.
  * 
@@ -63,10 +63,10 @@ public class YangpushProvider implements Provider, AutoCloseable {
 	}
 
 	/**
-	 * This method initializes DomDataBroker and Mountpoint service. This
-	 * services needed throughout the lifetime of the yangpush application and
-	 * registers its RPC implementation and Data change Listener with the
-	 * MD-SAL.
+	 * This method initializes {@link DOMDataBroker}, {@link NotificationEngine}
+	 * and {@link SubscriptionEngine}. These services are needed throughout the
+	 * lifetime of the yangpush application and registers its RPC implementation
+	 * with the MD-SAL.
 	 */
 	@Override
 	public void onSessionInitiated(ProviderSession session) {
