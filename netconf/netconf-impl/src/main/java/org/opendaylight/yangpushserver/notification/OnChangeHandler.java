@@ -141,15 +141,19 @@ public class OnChangeHandler implements AutoCloseable, DOMDataTreeChangeListener
 		// updates to synch the subscriber with the current state of the data
 		// store.
 		if (!noSynchOnStart) {
-			SubscriptionStreamStatus status = SubscriptionEngine.getInstance().getSubscription(subscriptionID)
-					.getSubscriptionStreamStatus();
-			if (status == SubscriptionStreamStatus.inactive) {
-				SubscriptionEngine.getInstance().getSubscription(subscriptionID)
-						.setSubscriptionStreamStatus(SubscriptionStreamStatus.active);
-				NotificationEngine.getInstance().periodicNotification(subscriptionID);
-				SubscriptionEngine.getInstance().getSubscription(subscriptionID)
-						.setSubscriptionStreamStatus(SubscriptionStreamStatus.inactive);
-			}
+			scheduler.schedule(() -> {
+				LOG.info("Sending synch-on-start push-update notification for on-change subscription {}...",
+						subscriptionID);
+				SubscriptionStreamStatus status = SubscriptionEngine.getInstance().getSubscription(subscriptionID)
+						.getSubscriptionStreamStatus();
+				if (status == SubscriptionStreamStatus.inactive) {
+					SubscriptionEngine.getInstance().getSubscription(subscriptionID)
+							.setSubscriptionStreamStatus(SubscriptionStreamStatus.active);
+					NotificationEngine.getInstance().periodicNotification(subscriptionID);
+					SubscriptionEngine.getInstance().getSubscription(subscriptionID)
+							.setSubscriptionStreamStatus(SubscriptionStreamStatus.inactive);
+				}
+			}, 50, TimeUnit.MILLISECONDS);
 		}
 
 		final Runnable triggerAction = () -> {

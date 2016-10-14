@@ -149,7 +149,7 @@ public class YangpushProvider implements Provider, AutoCloseable {
 	 *            ID of the new subscription
 	 */
 	public void onEstablishedSubscription(String subscriptionId) {
-		LOG.debug("Subscription with ID {} established.", subscriptionId);
+		LOG.info("Subscription with ID {} established.", subscriptionId);
 
 		if (latestEstablishedSubscriptionID.equals(priorEstablishedSubscriptionID)) {
 			latestEstablishedSubscriptionID = subscriptionId;
@@ -166,7 +166,7 @@ public class YangpushProvider implements Provider, AutoCloseable {
 	 *            ID of the deleted subscription
 	 */
 	public void onDeletedSubscription(String subscriptionId) {
-		LOG.debug("Subscription with ID {} deleted. Deleting from related session");
+		LOG.info("Subscription with ID {} deleted. Deleting from related session", subscriptionId);
 		for (NetconfServerSession sessionKey : serverSessionToSubIds.keySet()) {
 			Set<String> toRemove = new HashSet<>();
 			for (String subIDValue : serverSessionToSubIds.get(sessionKey)) {

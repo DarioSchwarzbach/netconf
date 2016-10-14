@@ -655,14 +655,12 @@ public class RpcImpl implements DOMRpcImplementation {
 					DataContainerChild<? extends PathArgument, ?> c2 = c1.getChild(period).get();
 					if (c2.getValue() != null) {
 						esri.setPeriod((Long) c2.getValue());
-						LOG.info("Periode auf " + esri.getPeriod() + " gesetzt");
 					}
 				} else if (c1.getChild(dampeningPeriod).isPresent()) {
 					// VII b Parsing on-Change
 					DataContainerChild<? extends PathArgument, ?> c2 = c1.getChild(dampeningPeriod).get();
 					if (c2.getValue() != null) {
 						esri.setDampeningPeriod((Long) c2.getValue());
-						LOG.info("Dampening Periode auf " + esri.getDampeningPeriod() + " gesetzt");
 					}
 					NodeIdentifier noSynchOnStart = new NodeIdentifier(Y_NO_SYNCH_ON_START_NAME);
 					t = c1.getChild(noSynchOnStart);
@@ -1181,14 +1179,12 @@ public class RpcImpl implements DOMRpcImplementation {
 					DataContainerChild<? extends PathArgument, ?> c2 = c1.getChild(period).get();
 					if (c2.getValue() != null) {
 						msri.setPeriod((Long) c2.getValue());
-						LOG.info("Periode auf " + msri.getPeriod() + " gesetzt");
 					}
 				} else if (c1.getChild(dampeningPeriod).isPresent()) {
 					// VII b Parsing on-Change
 					DataContainerChild<? extends PathArgument, ?> c2 = c1.getChild(dampeningPeriod).get();
 					if (c2.getValue() != null) {
 						msri.setDampeningPeriod((Long) c2.getValue());
-						LOG.info("Dampening Periode auf " + msri.getDampeningPeriod() + " gesetzt");
 					}
 					NodeIdentifier noSynchOnStart = new NodeIdentifier(Y_NO_SYNCH_ON_START_NAME);
 					t = c1.getChild(noSynchOnStart);

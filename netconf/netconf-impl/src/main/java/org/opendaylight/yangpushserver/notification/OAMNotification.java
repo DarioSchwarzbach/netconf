@@ -242,28 +242,24 @@ public final class OAMNotification extends NetconfMessage {
 					notifiationType.appendChild(subscriptionStopTime);
 				}
 				if (underlyingSubscription.getPeriod() != null) {
-					final Element periodic = base.createElement("periodic");
 					final Element period = base.createElement("period");
 					period.setTextContent(Long.toString(underlyingSubscription.getPeriod()));
-					periodic.appendChild(period);
-					notifiationType.appendChild(periodic);
+					notifiationType.appendChild(period);
 				}
 				if (underlyingSubscription.getDampeningPeriod() != null) {
-					final Element onChange = base.createElement("on-change");
 					if (underlyingSubscription.getNoSynchOnStart() != null) {
 						final Element noSynchOnStart = base.createElement("no-synch-on-start");
 						noSynchOnStart.setTextContent(underlyingSubscription.getNoSynchOnStart().toString());
-						onChange.appendChild(noSynchOnStart);
+						notifiationType.appendChild(noSynchOnStart);
 					}
 					if (underlyingSubscription.getExcludedChange() != null) {
 						final Element exludedChange = base.createElement("excluded-change");
 						exludedChange.setTextContent(underlyingSubscription.getExcludedChange());
-						onChange.appendChild(exludedChange);
+						notifiationType.appendChild(exludedChange);
 					}
 					final Element dampeningPeriod = base.createElement("dampening-period");
 					dampeningPeriod.setTextContent(Long.toString(underlyingSubscription.getDampeningPeriod()));
-					onChange.appendChild(dampeningPeriod);
-					notifiationType.appendChild(onChange);
+					notifiationType.appendChild(dampeningPeriod);
 				}
 			}
 		}
