@@ -201,6 +201,11 @@ module ietf-event-notifications {
     /*
      * TYPEDEFs
      */
+    typedef filt {
+        type uint32;
+        description
+                "A type for subscription identifiers.";
+    }
     
     typedef subscription-id {
         type uint32;
@@ -706,6 +711,33 @@ module ietf-event-notifications {
                 type subscription-id;
                 description
                                 "Identifier of this subscription.";
+            }
+            // This filter type was added, because OpenDaylight has a bug with anyxml nodes.
+            choice filter-type-1 {
+                description
+                            "A filter needs to be a single filter of a given type. Mixing
+                            and matching of multiple filters does not occur at the level of
+                            this grouping.";
+                case rfc5277 {
+                	description
+                        "Description for case RFC5277 needs to be added here.";
+                	// This was usually anyxml
+                	leaf filter-1{
+                		type string;
+                            description
+                                                "Filter per RFC 5277. Notification filter. If a filter element
+                                                is specified to look for data of a particular value, and the data
+                                                item is not present within a particular event notification for
+                                                its value to be checked against, the notification will be filtered
+                                                out. For example, if one were to check for ’severity=critical’
+                                                in a configuration event notification where this field was not
+                                                supported, then the notification would be filtered out. For subtree
+                                                filtering, a non-empty node set means that the filter matches.
+                                                For XPath filtering, the mechanisms defined in [XPATH] should
+                                                be used to convert the returned value to boolean.";
+                        
+                	}                    
+                }
             }
             leaf configured-subscription {
                 if-feature "configured-subscriptions";
