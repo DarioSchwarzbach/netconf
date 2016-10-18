@@ -325,7 +325,7 @@ public class SubscriptionEngine {
 			break;
 		case modify:
 			if (checkIfSubscriptionExists(subscriptionInfo.getSubscriptionId())) {
-				tx.merge(LogicalDatastoreType.OPERATIONAL, yid, men);
+				tx.put(LogicalDatastoreType.OPERATIONAL, yid, men);
 				masterSubMap.put(subscriptionInfo.getSubscriptionId(), subscriptionInfo);
 				LOG.info("Subscription modified...");
 			} else {
