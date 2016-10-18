@@ -5,4 +5,4 @@ To get this implementation running and other usefull information take a look at 
 
 Please see also https://github.com/MBlahetek/ncclient for a related NETCONF client to test this implementation.
 
-_Used OpenDaylight version: 3.0.8_
+__Used OpenDaylight version: 3.0.8__
