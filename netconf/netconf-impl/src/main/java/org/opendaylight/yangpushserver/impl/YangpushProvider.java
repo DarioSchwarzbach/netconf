@@ -189,6 +189,8 @@ public class YangpushProvider implements Provider, AutoCloseable {
 		LOG.info("Session {} down. Deleting all related subscriptions", netconfServerSession);
 		for (String subID : serverSessionToSubIds.get(netconfServerSession)) {
 			this.notificationEngine.unregisterNotification(subID);
+		}
+		for (String subID : serverSessionToSubIds.get(netconfServerSession)) {
 			this.subEngine.updateMdSal(this.subEngine.getSubscription(subID), operations.delete);
 		}
 		serverSessionToSubIds.remove(netconfServerSession);
